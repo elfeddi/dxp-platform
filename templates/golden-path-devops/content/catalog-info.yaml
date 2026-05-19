@@ -4,7 +4,7 @@ metadata:
   name: ${{ values.name }}
   description: ${{ values.description }}
   annotations:
-    github.com/project-slug: ${{ values.repoUrl | parseRepoUrl | pick('owner') }}/${{ values.repoUrl | parseRepoUrl | pick('repo') }}
+    backstage.io/source-location: url:https://github.com/${{ values.repoUrl | parseRepoUrl | pick('owner') }}/${{ values.repoUrl | parseRepoUrl | pick('repo') }}
 spec:
   type: service
   lifecycle: development
