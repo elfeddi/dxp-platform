@@ -1,6 +1,6 @@
 app:
   title: DxP Developer Portal
-  baseUrl: http://localhost:3000
+  baseUrl: https://158.158.8.131:8080
 
   # Enable all packages by default, this will discover packages from packages/app/package.json
   packages: all
@@ -27,17 +27,24 @@ backend:
   # auth:
   #   keys:
   #     - secret: ${BACKEND_SECRET}
-  baseUrl: http://localhost:7007
+  baseUrl: https://158.158.8.131:8080
   listen:
     port: 7007
+  https:
+    certificate:
+      cert:
+        $file: certs/cert.pem
+      key:
+        $file: certs/key.pem
     # Uncomment the following host directive to bind to specific interfaces
     # host: 127.0.0.1
   csp:
     connect-src: ["'self'", 'http:', 'https:']
+    worker-src: ["'self'", 'blob:']
     # Content-Security-Policy directives follow the Helmet format: https://helmetjs.github.io/#reference
     # Default Helmet Content-Security-Policy values can be removed by setting the key to false
   cors:
-    origin: http://localhost:3000
+    origin: https://158.158.8.131:8080
     methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
     credentials: true
   # This is for local development only, it is not recommended to use this in production
@@ -115,6 +122,15 @@ catalog:
     # Local example data, file locations are relative to the backend process, typically `packages/backend`
     - type: file
       target: ../../examples/entities.yaml
+    - type: url
+      target: https://github.com/elfeddi/dxp-mon-premier-service/blob/main/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: url
+      target: https://github.com/elfeddi/dxp-poc-gitops/blob/main/templates/golden-path-devops/template.yaml
+      rules:
+        - allow: [Template]
+
 
     # Local example template
     - type: file
@@ -153,7 +169,7 @@ kubernetes:
 # see https://backstage.io/docs/permissions/getting-started for more on the permission framework
 permission:
   # setting this to `false` will disable permissions
-  enabled: true
+  enabled: false
 
 # see https://backstage.io/docs/ai/mcp-actions for more details
 mcpActions:
@@ -161,3 +177,10 @@ mcpActions:
   description: 'Tools for managing your software catalog, creating new services from templates, and exploring your developer portal' # optional
 
 
+argocd:
+  appLocatorMethods:
+    - type: 'config'
+      instances:
+        - name: argocd
+          url: http://argocd-server.argocd.svc.cluster.local
+          token: ${ARGOCD_AUTH_TOKEN}

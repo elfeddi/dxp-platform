@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 COPY packages/backend/dist/bundle.tar.gz app-config*.yaml ./
 RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
 
+COPY certs/ ./certs/
 COPY node_modules/ ./node_modules/
 
 RUN cd /app/node_modules/isolated-vm && npm rebuild

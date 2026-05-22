@@ -66,4 +66,6 @@ backend.add(import('@backstage/plugin-signals-backend'));
 // mcp actions plugin
 backend.add(import('@backstage/plugin-mcp-actions-backend'));
 
+// argocd plugin
+backend.add(import('@roadiehq/backstage-plugin-argo-cd-backend'));
 backend.start();

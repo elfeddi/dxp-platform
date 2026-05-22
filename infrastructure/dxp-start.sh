@@ -76,3 +76,15 @@ kubectl port-forward -n harbor svc/harbor 9091:80 &>/dev/null &
 echo "🌐 Interfaces accessibles :"
 echo "   ArgoCD → https://localhost:9090"
 echo "   Harbor → http://localhost:9091"
+
+# Tekton Dashboard
+kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9295:9097 --address 0.0.0.0 &
+echo "Tekton Dashboard : http://$(curl -s ifconfig.me):9295"
+
+# Tekton Dashboard
+kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9295:9097 --address 0.0.0.0 &
+echo "Tekton Dashboard : http://$(curl -s ifconfig.me):9295"
+
+# Dex SSO
+kubectl port-forward svc/dex -n dex 32000:5556 --address 0.0.0.0 > /dev/null 2>&1 &
+echo "Dex SSO : http://$(curl -s ifconfig.me 2>/dev/null):32000"
