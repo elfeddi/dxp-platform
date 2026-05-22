@@ -34,13 +34,15 @@ check_prereqs() {
 }
 
 # ══ Chargement .env ══
+DXP_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 load_env() {
-  local env_file="$(dirname "$0")/../.env"
+  local env_file="${DXP_SCRIPTS_DIR}/.env"
   if [ -f "$env_file" ]; then
     source "$env_file"
-    ok ".env chargé"
+    ok ".env chargé depuis $env_file"
   else
-    fail ".env non trouvé — copier .env.example et remplir les valeurs"
+    fail ".env non trouvé dans $env_file — copier .env.example et remplir les valeurs"
   fi
 }
 
@@ -59,4 +61,3 @@ export DXP_NAMESPACE_DEX="dex"
 export DXP_NAMESPACE_TEKTON="tekton-pipelines"
 
 export DXP_IP=$(curl -s ifconfig.me 2>/dev/null)
-
