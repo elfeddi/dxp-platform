@@ -1,20 +1,22 @@
-# DxP — Ressources Ingress HTTPS par path
-# Accès : https://158.158.8.131/<service>
+# DxP — Ingress HTTPS par namespace
+# https://${DXP_IP}:9444/<service>
 
 ---
+# ArgoCD
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: dxp-ingress
-  namespace: default
+  name: dxp-argocd
+  namespace: argocd
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     cert-manager.io/cluster-issuer: "dxp-ca-issuer"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   tls:
-  - secretName: dxp-tls
+  - secretName: argocd-tls
   rules:
   - http:
       paths:
@@ -23,46 +25,130 @@ spec:
         backend:
           service:
             name: argocd-server
-            namespace: argocd
             port:
               number: 80
+---
+# Grafana
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dxp-grafana
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "dxp-ca-issuer"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  tls:
+  - secretName: grafana-tls
+  rules:
+  - http:
+      paths:
       - path: /grafana(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
           service:
             name: kube-prometheus-stack-grafana
-            namespace: monitoring
             port:
               number: 80
-      - path: /dex(/|$)(.*)
-        pathType: ImplementationSpecific
+---
+# Dex
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dxp-dex
+  namespace: dex
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "dxp-ca-issuer"
+spec:
+  ingressClassName: nginx
+  tls:
+  - secretName: dex-tls
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
         backend:
           service:
             name: dex
-            namespace: dex
             port:
               number: 5556
+---
+# Harbor
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dxp-harbor
+  namespace: harbor
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    cert-manager.io/cluster-issuer: "dxp-ca-issuer"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  tls:
+  - secretName: harbor-tls
+  rules:
+  - http:
+      paths:
       - path: /harbor(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
           service:
             name: harbor
-            namespace: harbor
             port:
               number: 80
+---
+# Airflow
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dxp-airflow
+  namespace: dataops
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "dxp-ca-issuer"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  tls:
+  - secretName: airflow-tls
+  rules:
+  - http:
+      paths:
       - path: /airflow(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
           service:
             name: airflow-webserver
-            namespace: dataops
             port:
               number: 8080
+---
+# Tekton Dashboard
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dxp-tekton
+  namespace: tekton-pipelines
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "dxp-ca-issuer"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  tls:
+  - secretName: tekton-tls
+  rules:
+  - http:
+      paths:
       - path: /tekton(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
           service:
             name: tekton-dashboard
-            namespace: tekton-pipelines
             port:
               number: 9097

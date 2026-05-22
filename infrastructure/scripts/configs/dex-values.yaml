@@ -1,0 +1,49 @@
+config:
+  issuer: https://158.158.8.131:32000
+  storage:
+    type: kubernetes
+    config:
+      inCluster: true
+  web:
+    https: 0.0.0.0:5557
+    tlsCert: /etc/dex/tls/tls.crt
+    tlsKey: /etc/dex/tls/tls.key
+  connectors:
+  - type: github
+    id: github
+    name: GitHub
+    config:
+      clientID: Ov23liDY1tzmZZRBuHeY
+      clientSecret: 9e2bd26457b2b74a5d9563047baeb3c2ae780b1b
+      redirectURI: https://158.158.8.131:32000/callback
+  staticClients:
+  - id: dxp-argocd
+    name: ArgoCD
+    secret: dxp-argocd-secret
+    redirectURIs:
+    - https://158.158.8.131:9443/argocd/auth/callback
+  - id: dxp-grafana
+    name: Grafana
+    secret: dxp-grafana-secret
+    redirectURIs:
+    - https://158.158.8.131:9443/grafana/login/generic_oauth
+  - id: dxp-harbor
+    name: Harbor
+    secret: dxp-harbor-secret
+    redirectURIs:
+    - http://harbor.dxp/c/oidc/callback
+    - http://158.158.8.131:9091/c/oidc/callback
+service:
+  type: NodePort
+  ports:
+    https:
+      port: 5557
+      nodePort: 32000
+volumes:
+  - name: tls
+    secret:
+      secretName: dex-https-tls
+volumeMounts:
+  - name: tls
+    mountPath: /etc/dex/tls
+    readOnly: true
