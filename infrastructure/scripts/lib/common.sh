@@ -60,4 +60,4 @@ export DXP_NAMESPACE_LLMOPS="llmops"
 export DXP_NAMESPACE_DEX="dex"
 export DXP_NAMESPACE_TEKTON="tekton-pipelines"
 
-export DXP_IP=$(curl -s ifconfig.me 2>/dev/null)
+# DXP_IP chargé depuis .env

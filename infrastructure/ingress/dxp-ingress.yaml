@@ -1,0 +1,68 @@
+# DxP — Ressources Ingress HTTPS par path
+# Accès : https://158.158.8.131/<service>
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dxp-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "dxp-ca-issuer"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  tls:
+  - secretName: dxp-tls
+  rules:
+  - http:
+      paths:
+      - path: /argocd(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: argocd-server
+            namespace: argocd
+            port:
+              number: 80
+      - path: /grafana(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: kube-prometheus-stack-grafana
+            namespace: monitoring
+            port:
+              number: 80
+      - path: /dex(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: dex
+            namespace: dex
+            port:
+              number: 5556
+      - path: /harbor(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: harbor
+            namespace: harbor
+            port:
+              number: 80
+      - path: /airflow(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: airflow-webserver
+            namespace: dataops
+            port:
+              number: 8080
+      - path: /tekton(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: tekton-dashboard
+            namespace: tekton-pipelines
+            port:
+              number: 9097
