@@ -6,8 +6,19 @@ title "01 — Cluster k3d"
 # Supprimer le cluster existant si présent
 if k3d cluster list | grep -q "dxp-poc"; then
   warn "Cluster dxp-poc existant — suppression..."
-  k3d cluster delete dxp-poc
-  sleep 5
+  
+  # Stopper et supprimer les containers k3d manuellement
+  docker ps -a --filter "name=k3d-dxp-poc" --format "{{.ID}}" | \
+    xargs -r docker stop 2>/dev/null || true
+  docker ps -a --filter "name=k3d-dxp-poc" --format "{{.ID}}" | \
+    xargs -r docker rm -f 2>/dev/null || true
+  
+  # Supprimer le réseau Docker
+  docker network rm k3d-dxp-poc 2>/dev/null || true
+  
+  # Supprimer le cluster k3d
+  k3d cluster delete dxp-poc 2>/dev/null || true
+  sleep 3
 fi
 
 log "Création cluster k3d dxp-poc..."
