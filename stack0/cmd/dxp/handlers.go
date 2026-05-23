@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/elfeddi/dxp/internal/connector"
+	"github.com/elfeddi/dxp/internal/provisioner"
 	"github.com/elfeddi/dxp/internal/resolver"
 	"github.com/spf13/cobra"
 )
@@ -47,50 +48,23 @@ func runValidate(cmd *cobra.Command, args []string) error {
 
 func runApply(cmd *cobra.Command, args []string) error {
 	path := args[0]
-
-	p := resolver.NewParser()
-	config, err := p.ParseFile(path)
-	if err != nil {
-		return fmt.Errorf("❌ parsing: %w", err)
-	}
-
-	v := resolver.NewValidator()
-	if errs := v.Validate(config); len(errs) > 0 {
-		return fmt.Errorf("❌ validation échouée — lancer dxp validate d'abord")
-	}
-
-	d := resolver.NewDAGResolver()
-	ordered, err := d.Resolve(config)
-	if err != nil {
-		return fmt.Errorf("❌ résolution DAG: %w", err)
-	}
+	fmt.Printf("🚀 dxp apply %s\n", path)
 
 	registry := connector.NewDefaultRegistry()
-	ctx := context.Background()
+	engine := provisioner.NewEngine(registry)
 
-	fmt.Printf("🚀 Application de %s...\n", path)
-	for _, c := range ordered {
-		conn, err := registry.Create(c.Type, c.Config)
-		if err != nil {
-			return fmt.Errorf("❌ création connecteur %s: %w", c.Type, err)
-		}
-
-		fmt.Printf("   → %s (%s)... ", conn.Name(), conn.Type())
-		if err := conn.Install(ctx); err != nil {
-			fmt.Printf("⚠️  %s\n", err)
-		} else {
-			fmt.Println("✅")
-		}
+	if err := engine.Apply(context.Background(), path); err != nil {
+		return fmt.Errorf("❌ apply échoué: %w", err)
 	}
-	fmt.Println("✅ Apply terminé")
+
+	fmt.Println("✅ Apply terminé avec succès")
 	return nil
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
 	prompt := args[0]
 	fmt.Printf("🤖 Génération dxp.yaml depuis: \"%s\"\n", prompt)
-	fmt.Println("   C6 AI Gateway — implémentation à venir (Phase 2)")
-	fmt.Println("   Pour l'instant, utilisez dxp.yaml manuellement")
+	fmt.Println("   C6 AIGateway — implémentation à venir")
 	return nil
 }
 
