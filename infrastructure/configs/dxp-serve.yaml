@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dxp-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dxp-serve-env
+  namespace: dxp-system
+type: Opaque
+stringData:
+  ARGOCD_TOKEN: ""
+  HARBOR_API_TOKEN: ""
+  GRAFANA_API_TOKEN: ""
+  LITELLM_API_KEY: "dxp-LiteLLM2026"
+  LITELLM_API_BASE: "http://litellm.llmops.svc.cluster.local:4000"
+  LITELLM_MODEL: "dxp-default"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dxp-serve-config
+  namespace: dxp-system
+data:
+  dxp.yaml: |
+    version: "1.0"
+    name: dxp-poc
+    provider: azure
+    stacks:
+      - name: devops
+        enabled: true
+        connectors:
+          - type: argocd
+            name: argocd-main
+            config:
+              url: https://dxp-ingress-nginx-controller.ingress-nginx.svc.cluster.local/argocd
+          - type: harbor
+            name: harbor-main
+            config:
+              url: http://harbor.harbor.svc.cluster.local
+          - type: grafana
+            name: grafana-main
+            config:
+              url: http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dxp-serve
+  namespace: dxp-system
+  labels:
+    app: dxp-serve
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dxp-serve
+  template:
+    metadata:
+      labels:
+        app: dxp-serve
+        version: v0.2.0
+    spec:
+      containers:
+        - name: dxp-serve
+          image: harbor.dxp/dxp/dxp-serve:v0.2.0
+          imagePullPolicy: Always
+          args: ["serve", "--config", "/config/dxp.yaml", "--addr", ":8090"]
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - secretRef:
+                name: dxp-serve-env
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: dxp-serve-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dxp-serve
+  namespace: dxp-system
+spec:
+  selector:
+    app: dxp-serve
+  ports:
+    - port: 8090
+      targetPort: 8090
+      nodePort: 30890
+  type: NodePort
