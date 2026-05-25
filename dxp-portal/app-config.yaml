@@ -1,6 +1,6 @@
 app:
   title: DxP Developer Portal
-  baseUrl: https://158.158.8.131:8080
+  baseUrl: http://158.158.8.131:7007
 
   # Enable all packages by default, this will discover packages from packages/app/package.json
   packages: all
@@ -27,15 +27,16 @@ backend:
   # auth:
   #   keys:
   #     - secret: ${BACKEND_SECRET}
-  baseUrl: https://158.158.8.131:8080
+  baseUrl: http://158.158.8.131:7007
   listen:
     port: 7007
-  https:
-    certificate:
-      cert:
-        $file: certs/cert.pem
-      key:
-        $file: certs/key.pem
+  # https désactivé en mode dev — Backstage écoute en HTTP sur 7007
+  # https:
+  #   certificate:
+  #     cert:
+  #       $file: certs/cert.pem
+  #     key:
+  #       $file: certs/key.pem
     # Uncomment the following host directive to bind to specific interfaces
     # host: 127.0.0.1
   csp:
@@ -44,7 +45,7 @@ backend:
     # Content-Security-Policy directives follow the Helmet format: https://helmetjs.github.io/#reference
     # Default Helmet Content-Security-Policy values can be removed by setting the key to false
   cors:
-    origin: https://158.158.8.131:8080
+    origin: http://158.158.8.131:7007
     methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
     credentials: true
   # This is for local development only, it is not recommended to use this in production
@@ -72,12 +73,19 @@ integrations:
     #   token: ${GHE_TOKEN}
 
 proxy:
-  ### Example for how to add a proxy endpoint for the frontend.
-  ### A typical reason to do this is to handle HTTPS and CORS for internal services.
-  # endpoints:
-  #   '/test':
-  #     target: 'https://example.com'
-  #     changeOrigin: true
+  endpoints:
+    '/dxp':
+      target: 'http://localhost:8090'
+      changeOrigin: true
+      credentials: dangerously-allow-unauthenticated
+      headers:
+        Authorization: 'Bearer viewer'
+    '/dxp-admin':
+      target: 'http://localhost:8090'
+      changeOrigin: true
+      credentials: dangerously-allow-unauthenticated
+      headers:
+        Authorization: 'Bearer operator' 
 
 # Reference documentation http://backstage.io/docs/features/techdocs/configuration
 # Note: After experimenting with basic setup, use CI/CD to generate docs
