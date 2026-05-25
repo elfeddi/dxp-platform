@@ -1,90 +1,109 @@
 #!/bin/bash
-# DxP LiteDxP — Script de démarrage
+# DxP — Script de démarrage
+# Session 10 — 25 mai 2026
 # Usage : ./dxp-start.sh
+set -euo pipefail
 
-set -e
+GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RESET='\033[0m'
+ok()   { echo -e "${GREEN}  ✓${RESET} $1"; }
+info() { echo -e "${CYAN}  →${RESET} $1"; }
+warn() { echo -e "${YELLOW}  !${RESET} $1"; }
+header() { echo -e "\n${CYAN}══ $1 ══${RESET}"; }
 
-echo "🚀 Démarrage LiteDxP..."
+header "DxP — Démarrage"
 
-# 1. Démarrer le cluster
+# ── 1. Cluster ────────────────────────────────────────────────────
+header "1. Cluster k3d"
 k3d cluster start dxp-poc
-echo "✅ Cluster démarré"
+kubectl wait --for=condition=Ready nodes --all --timeout=90s 2>/dev/null || true
+ok "Cluster démarré — $(kubectl get nodes --no-headers | wc -l) nœuds Ready"
 
-# 2. Attendre que les nœuds soient Ready
-kubectl wait --for=condition=Ready nodes --all --timeout=60s
-echo "✅ Nœuds Ready"
+# ── 2. CoreDNS — rewrite harbor.dxp ──────────────────────────────
+header "2. CoreDNS"
+kubectl patch configmap coredns -n kube-system --type merge -p \
+  '{"data":{"Corefile":".:53 {\n    errors\n    health\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n      pods insecure\n      fallthrough in-addr.arpa ip6.arpa\n    }\n    rewrite name harbor.dxp harbor.harbor.svc.cluster.local\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n  }"}}'
+kubectl rollout restart deployment coredns -n kube-system > /dev/null 2>&1
+ok "CoreDNS patché — harbor.dxp résolu"
 
-# 3. Récupérer l'IP Harbor
-HARBOR_IP=$(kubectl get svc -n harbor harbor -o jsonpath='{.spec.clusterIP}')
-echo "📦 Harbor IP: $HARBOR_IP"
+# ── 3. Registries k3d (Harbor IP) ────────────────────────────────
+header "3. Harbor registries"
+HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
+info "Harbor ClusterIP : $HARBOR_IP"
 
-# 4. Mettre à jour registries.yaml avec la bonne IP
-for node in k3d-dxp-poc-server-0 k3d-dxp-poc-agent-0 k3d-dxp-poc-agent-1; do
-  docker exec $node sh -c "cat > /etc/rancher/k3s/registries.yaml << YAML
+for node in $(k3d node list | grep dxp-poc | grep -v tools | grep -v serverlb | awk '{print $1}'); do
+  docker exec "${node}" sh -c "mkdir -p /etc/rancher/k3s && cat > /etc/rancher/k3s/registries.yaml << YAML
 mirrors:
-  cgr.dev:
+  harbor.dxp:
     endpoint:
-      - \"https://cgr.dev\"
-  gcr.io:
-    endpoint:
-      - \"https://gcr.io\"
-  $HARBOR_IP:
-    endpoint:
-      - \"http://$HARBOR_IP\"
-  harbor.harbor.svc.cluster.local:
-    endpoint:
-      - \"http://$HARBOR_IP\"
+      - http://${HARBOR_IP}
 configs:
-  \"cgr.dev\":
+  harbor.dxp:
     tls:
       insecure_skip_verify: true
-  \"gcr.io\":
-    tls:
-      insecure_skip_verify: true
-  \"$HARBOR_IP\":
-    tls:
-      insecure_skip_verify: true
-  \"harbor.harbor.svc.cluster.local\":
-    tls:
-      insecure_skip_verify: true
-YAML"
+YAML" 2>/dev/null
 done
-echo "✅ registries.yaml mis à jour"
+ok "registries.yaml mis à jour sur tous les nœuds (dont agent-2)"
 
-# 5. Importer Kaniko depuis Harbor dans containerd
-for node in k3d-dxp-poc-server-0 k3d-dxp-poc-agent-0 k3d-dxp-poc-agent-1; do
-  docker exec $node ctr images pull --plain-http $HARBOR_IP/dxp/kaniko:latest 2>/dev/null || true
-done
-echo "✅ Kaniko importé"
+# ── 4. Dex SSO — patch port ───────────────────────────────────────
+header "4. Dex SSO"
+kubectl patch svc dex -n dex --type=json -p='[
+  {"op": "replace", "path": "/spec/ports/0/port", "value": 5557},
+  {"op": "replace", "path": "/spec/ports/0/targetPort", "value": 5557}
+]' 2>/dev/null || true
+ok "Dex port patché (5557)"
 
-# 6. Mettre à jour la Task Tekton
-kubectl patch task kaniko-build-push --type=json -p="[
-  {\"op\":\"replace\",\"path\":\"/spec/steps/0/image\",\"value\":\"$HARBOR_IP/dxp/kaniko:latest\"}
-]" 2>/dev/null || true
-echo "✅ Task Tekton mise à jour"
+# ── 5. Ollama ─────────────────────────────────────────────────────
+header "5. Ollama"
+if systemctl is-active --quiet ollama; then
+  ok "Ollama déjà actif"
+else
+  sudo systemctl start ollama
+  sleep 2
+  ok "Ollama démarré"
+fi
+info "Modèle : $(ollama list 2>/dev/null | grep -v NAME | awk '{print $1}' | head -1 || echo 'aucun')"
 
+# ── 6. Harbor jobservice ──────────────────────────────────────────
+header "6. Harbor"
+kubectl rollout restart deployment harbor-jobservice -n harbor > /dev/null 2>&1 || true
+ok "Harbor jobservice redémarré"
+
+# ── 7. dxp-serve pod K8s ─────────────────────────────────────────
+header "7. dxp-serve"
+DXP_POD=$(kubectl get pods -n dxp-system -l app=dxp-serve --no-headers 2>/dev/null | grep Running | awk '{print $1}' | head -1)
+if [ -n "$DXP_POD" ]; then
+  ok "dxp-serve pod Running : $DXP_POD"
+else
+  warn "dxp-serve pod non Running — vérifier : kubectl get pods -n dxp-system"
+  # Tentative de redémarrage
+  kubectl rollout restart deployment dxp-serve -n dxp-system > /dev/null 2>&1 || true
+  info "Redémarrage déclenché — attendre 15s puis vérifier"
+fi
+
+# ── 8. Taint agent-2 (idempotent) ────────────────────────────────
+header "8. agent-2"
+if kubectl get node k3d-dxp-poc-agent-2-0 > /dev/null 2>&1; then
+  kubectl taint nodes k3d-dxp-poc-agent-2-0 node-role=workload:NoSchedule --overwrite 2>/dev/null || true
+  kubectl label node k3d-dxp-poc-agent-2-0 node-role=workload environment=demo --overwrite 2>/dev/null || true
+  ok "agent-2 : taint + label workload appliqués"
+else
+  warn "agent-2 non trouvé — ajouter avec : k3d node create dxp-poc-agent-2 --cluster dxp-poc --role agent"
+fi
+
+# ── 10. Résumé ────────────────────────────────────────────────────
 echo ""
-echo "🎉 LiteDxP est prêt !"
-echo "   ArgoCD  → https://localhost:9090 (kubectl port-forward svc/argocd-server -n argocd 9090:443)"
-echo "   Harbor  → http://localhost:9091  (kubectl port-forward -n harbor svc/harbor 9091:80)"
-echo "   Vault   → kubectl exec -n vault vault-0 -- vault status"
-
-# 7. Lancer les port-forwards
-kubectl port-forward svc/argocd-server -n argocd 9090:443 &>/dev/null &
-kubectl port-forward -n harbor svc/harbor 9091:80 &>/dev/null &
-
-echo "🌐 Interfaces accessibles :"
-echo "   ArgoCD → https://localhost:9090"
-echo "   Harbor → http://localhost:9091"
-
-# Tekton Dashboard
-kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9295:9097 --address 0.0.0.0 &
-echo "Tekton Dashboard : http://$(curl -s ifconfig.me):9295"
-
-# Tekton Dashboard
-kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9295:9097 --address 0.0.0.0 &
-echo "Tekton Dashboard : http://$(curl -s ifconfig.me):9295"
-
-# Dex SSO
-kubectl port-forward svc/dex -n dex 32000:5556 --address 0.0.0.0 > /dev/null 2>&1 &
-echo "Dex SSO : http://$(curl -s ifconfig.me 2>/dev/null):32000"
+echo -e "${GREEN}╔══════════════════════════════════════════════╗${RESET}"
+echo -e "${GREEN}║   DxP est prêt                               ║${RESET}"
+echo -e "${GREEN}╚══════════════════════════════════════════════╝${RESET}"
+echo ""
+echo "  Nœuds    : $(kubectl get nodes --no-headers | wc -l) (dont 1 agent-2 workload)"
+echo "  ArgoCD   : https://158.158.8.131:9443/argocd"
+echo "  Harbor   : http://158.158.8.131:9091"
+echo "  Grafana  : https://158.158.8.131:9443/grafana"
+echo "  Backstage: http://158.158.8.131:7007"
+echo "  Airflow  : http://158.158.8.131:9294"
+echo "  LiteLLM  : http://158.158.8.131:30096"
+echo ""
+echo "  dxp serve pod : kubectl get pods -n dxp-system"
+echo "  Backstage     : cd ~/dxp-poc-gitops/dxp-portal && nvm use 20 && yarn workspace backend start < /dev/null > /tmp/backstage-backend.log 2>&1 & disown \$!"
+echo ""
