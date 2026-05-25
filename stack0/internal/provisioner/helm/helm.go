@@ -9,6 +9,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v3/pkg/getter"
 )
 
 // Client wrappeur autour du Helm SDK Go
@@ -116,20 +117,17 @@ func (c *Client) ReleaseExists(releaseName string) (bool, error) {
 
 // AddRepo ajoute un repo Helm
 func AddRepo(name, url string) error {
-	settings := cli.New()
-	repoFile := settings.RepositoryConfig
-
 	entry := repo.Entry{
 		Name: name,
 		URL:  url,
 	}
-
-	r, err := repo.NewChartRepository(&entry, repo.NewChartRepository(nil, nil).HTTPClient)
+	r, err := repo.NewChartRepository(&entry, getter.All(cli.New()))
 	if err != nil {
 		return fmt.Errorf("ajout repo %s: %w", name, err)
 	}
-	_ = r
-
+	if _, err := r.DownloadIndexFile(); err != nil {
+		return fmt.Errorf("index repo %s: %w", name, err)
+	}
 	return nil
 }
 

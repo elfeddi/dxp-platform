@@ -63,8 +63,11 @@ func runApply(cmd *cobra.Command, args []string) error {
 
 func runGenerate(cmd *cobra.Command, args []string) error {
 	prompt := args[0]
-	fmt.Printf("🤖 Génération dxp.yaml depuis: \"%s\"\n", prompt)
-	fmt.Println("   C6 AIGateway — implémentation à venir")
+	fmt.Println("\n  C6 AIGateway — generation en cours...")
+	fmt.Printf("  Prompt : %s\n\n", prompt)
+	fmt.Println("  Pour utiliser C6, demarrez le serveur et appelez l'API :")
+	fmt.Println("    dxp serve --config dxp.yaml")
+	fmt.Printf("    curl -s -X POST http://localhost:8090/api/dxp/generate -H 'Authorization: Bearer operator' -H 'Content-Type: application/json' -d '{\"prompt\":\"%s\"}' | python3 -m json.tool\n", prompt)
 	return nil
 }
 

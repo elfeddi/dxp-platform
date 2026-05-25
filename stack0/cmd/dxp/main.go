@@ -45,7 +45,7 @@ func main() {
 	rootCmd.AddCommand(applyCmd)
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(statusCmd)
-
+	rootCmd.AddCommand(serveCmd)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
