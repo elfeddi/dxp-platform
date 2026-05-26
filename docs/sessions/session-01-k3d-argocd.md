@@ -16,7 +16,7 @@ Poser les deux fondations du POC DxP : cluster Kubernetes local (k3d) et moteur 
 3. Pull des images ArgoCD + import dans k3d
 4. Installation ArgoCD dans le namespace `argocd`
 5. Exposition UI sur `https://localhost:9090`
-6. Création du repo GitHub `dxp-poc-gitops`
+6. Création du repo GitHub `dxp-platform`
 7. Déploiement de l'app de test nginx via ArgoCD
 8. Validation de la boucle GitOps end-to-end
 
@@ -40,7 +40,7 @@ Poser les deux fondations du POC DxP : cluster Kubernetes local (k3d) et moteur 
 ### État en fin de session
 - ✅ Cluster k3d 3 nœuds Running
 - ✅ ArgoCD v3.4.2 opérationnel
-- ✅ Repo GitHub `dxp-poc-gitops` connecté
+- ✅ Repo GitHub `dxp-platform` connecté
 - ✅ App nginx déployée via GitOps
 - ⚠️ `argocd-applicationset-controller` en CrashLoopBackOff (non bloquant)
 

@@ -135,7 +135,7 @@ catalog:
       rules:
         - allow: [Component]
     - type: url
-      target: https://github.com/elfeddi/dxp-poc-gitops/blob/main/templates/golden-path-devops/template.yaml
+      target: https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml
       rules:
         - allow: [Template]
 

@@ -113,7 +113,7 @@ spec:
 Un repo GitOps bien structuré sépare les applications de l'infrastructure :
 
 ```
-dxp-poc-gitops/
+dxp-platform/
 ├── apps/                    ← applications métier
 │   ├── nginx/
 │   │   ├── namespace.yaml
@@ -168,7 +168,7 @@ ArgoCD est le **moteur de déploiement GitOps** de DxP. Toute mise en production
 Développeur
     │ git push
     ▼
-GitHub (dxp-poc-gitops)
+GitHub (dxp-platform)
     │ ArgoCD surveille
     ▼
 ArgoCD détecte le changement

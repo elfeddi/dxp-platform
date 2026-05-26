@@ -18,7 +18,7 @@ Rendre LiteDxP redémarrable sans friction — Harbor persistent + script `dxp-s
 ### Le script dxp-start.sh
 
 ```bash
-k3d cluster start dxp-poc && ~/dxp-poc-gitops/infrastructure/dxp-start.sh
+k3d cluster start dxp-poc && ~/dxp-platform/infrastructure/dxp-start.sh
 ```
 
 Ce que fait le script automatiquement :
@@ -37,7 +37,7 @@ Ce que fait le script automatiquement :
 k3d cluster stop dxp-poc
 
 # Démarrer LiteDxP
-k3d cluster start dxp-poc && ~/dxp-poc-gitops/infrastructure/dxp-start.sh
+k3d cluster start dxp-poc && ~/dxp-platform/infrastructure/dxp-start.sh
 
 # Accès ArgoCD
 kubectl port-forward svc/argocd-server -n argocd 9090:443

@@ -110,7 +110,7 @@ spec:
     name: dxp-ci
   params:
     - name: git-url
-      value: https://github.com/elfeddi/dxp-poc-gitops
+      value: https://github.com/elfeddi/dxp-platform
     - name: image-tag
       value: v1.2.3
 ```
@@ -193,7 +193,7 @@ Signe cryptographiquement l'image. Kubernetes peut ensuite vérifier que l'image
 Tâche : update-manifest
 Image : alpine/git
 Input : nouveau tag de l'image
-Output : commit dans dxp-poc-gitops avec le nouveau tag
+Output : commit dans dxp-platform avec le nouveau tag
 ```
 Met à jour le fichier `deployment.yaml` dans le repo GitOps avec le nouveau tag d'image. ArgoCD détecte le changement et déploie automatiquement.
 
