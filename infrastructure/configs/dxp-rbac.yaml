@@ -1,0 +1,28 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dxp-provisioner
+  labels:
+    dxp.io/managed: "true"
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "create", "update"]
+- apiGroups: ["argoproj.io"]
+  resources: ["applications"]
+  verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dxp-provisioner
+  labels:
+    dxp.io/managed: "true"
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: dxp-system
+roleRef:
+  kind: ClusterRole
+  name: dxp-provisioner
+  apiGroup: rbac.authorization.k8s.io
