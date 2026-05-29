@@ -3,6 +3,11 @@ kind: Component
 metadata:
   name: ${{ values.name }}
   description: ${{ values.description }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/source-location: url:https://github.com/${{ values.repoOwner }}/${{ values.name }}
+    argocd/app-name: ${{ values.name }}
+    tekton.dev/cicd: "true"
 spec:
   type: service
   lifecycle: development
