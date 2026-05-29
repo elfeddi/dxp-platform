@@ -75,7 +75,6 @@ spec:
       name: Publier sur GitHub
       action: github:repo:push
       input:
-        description: ${{ parameters.description }}
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
 
