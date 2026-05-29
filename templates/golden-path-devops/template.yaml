@@ -78,7 +78,6 @@ spec:
         description: ${{ parameters.description }}
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
-        repoVisibility: public
 
     - id: register
       name: Enregistrer dans le catalogue DxP
