@@ -73,6 +73,13 @@ header "7. dxp-serve"
 DXP_POD=$(kubectl get pods -n dxp-system -l app=dxp-serve --no-headers 2>/dev/null | grep Running | awk '{print $1}' | head -1)
 if [ -n "$DXP_POD" ]; then
   ok "dxp-serve pod Running : $DXP_POD"
+  # Port-forward dxp-serve → accessible depuis la VM sur :30890
+  pkill -f "port-forward.*dxp-serve" 2>/dev/null || true
+  sleep 1
+  kubectl port-forward -n dxp-system svc/dxp-serve 30890:8090 \
+    < /dev/null > /tmp/dxp-serve-pf.log 2>&1 & disown $!
+  sleep 2
+  ok "dxp-serve port-forward actif → localhost:30890"
 else
   warn "dxp-serve pod non Running — vérifier : kubectl get pods -n dxp-system"
   # Tentative de redémarrage
