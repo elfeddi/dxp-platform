@@ -1,1 +1,3 @@
 infrastructure/scripts/.env
+dxp-portal/*.pem
+dxp-portal/*.bak

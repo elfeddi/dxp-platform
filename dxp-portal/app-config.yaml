@@ -1,6 +1,6 @@
 app:
   title: DxP Developer Portal
-  baseUrl: http://158.158.8.131:7007
+  baseUrl: http://localhost:7007
 
   # Enable all packages by default, this will discover packages from packages/app/package.json
   packages: all
@@ -27,7 +27,7 @@ backend:
   # auth:
   #   keys:
   #     - secret: ${BACKEND_SECRET}
-  baseUrl: http://158.158.8.131:7007
+  baseUrl: http://localhost:7007
   listen:
     port: 7007
   # https désactivé en mode dev — Backstage écoute en HTTP sur 7007
@@ -38,7 +38,7 @@ backend:
   #     key:
   #       $file: certs/key.pem
     # Uncomment the following host directive to bind to specific interfaces
-    # host: 127.0.0.1
+    host: 0.0.0.0
   csp:
     connect-src: ["'self'", 'http:', 'https:']
     worker-src: ["'self'", 'blob:']
@@ -64,14 +64,13 @@ backend:
 integrations:
   github:
     - host: github.com
-      # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
-      # about setting up the GitHub integration here: https://backstage.io/docs/integrations/github/locations#configuration
       token: ${GITHUB_TOKEN}
-    ### Example for how to add your GitHub Enterprise instance using the API:
-    # - host: ghe.example.net
-    #   apiBaseUrl: https://ghe.example.net/api/v3
-    #   token: ${GHE_TOKEN}
-
+      apps:
+        - appId: 3903689
+          clientId: Iv23liS6GCgXTm6pH3yI
+          clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+          webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
+          privateKey: ${GITHUB_APP_PRIVATE_KEY}
 proxy:
   endpoints:
     '/dxp':
@@ -128,12 +127,6 @@ catalog:
     - allow: [Component, System, API, Resource, Location]
   locations:
     # Local example data, file locations are relative to the backend process, typically `packages/backend`
-    - type: file
-      target: ../../examples/entities.yaml
-    - type: url
-      target: https://github.com/elfeddi/dxp-mon-premier-service/blob/main/catalog-info.yaml
-      rules:
-        - allow: [Component]
     - type: url
       target: https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml
       rules:
