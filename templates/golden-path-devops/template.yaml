@@ -73,7 +73,7 @@ spec:
 
     - id: publish
       name: Publier sur GitHub
-      action: publish:github
+      action: github:repo:push
       input:
         description: ${{ parameters.description }}
         repoUrl: ${{ parameters.repoUrl }}
