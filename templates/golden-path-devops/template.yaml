@@ -83,7 +83,7 @@ spec:
       action: http:backstage:request
       input:
         method: POST
-        path: /api/proxy/dxp/api/dxp/provision
+        path: /api/proxy/dxp-admin/api/dxp/provision
         headers:
           Content-Type: application/json
         body:
