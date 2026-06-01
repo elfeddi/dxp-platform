@@ -124,7 +124,7 @@ catalog:
     entityFilename: catalog-info.yaml
     pullRequestBranchName: backstage-integration
   rules:
-    - allow: [Component, System, API, Resource, Location]
+    - allow: [Component, System, API, Resource, Location, Template]
   locations:
     # Local example data, file locations are relative to the backend process, typically `packages/backend`
     - type: url
@@ -135,7 +135,7 @@ catalog:
 
     # Local example template
     - type: file
-      target: ../../examples/template/template.yaml
+      target: ../../templates/golden-path-devops/template.yaml
       rules:
         - allow: [Template]
 
