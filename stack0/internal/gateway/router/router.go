@@ -67,16 +67,11 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	health := s.obs.Health.Get()
-	code := http.StatusOK
-	status := "ok"
-	if !health.Healthy {
-		code = http.StatusServiceUnavailable
-		status = "degraded"
-	}
-	writeJSON(w, code, map[string]any{
-		"status":    status,
-		"healthy":   health.Healthy,
-		"ready":     health.Ready,
+	// Toujours retourner 200 — K8s gère le restart via failureThreshold
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":     "ok",
+		"healthy":    health.Healthy,
+		"ready":      health.Ready,
 		"checked_at": health.CheckedAt,
 	})
 }
