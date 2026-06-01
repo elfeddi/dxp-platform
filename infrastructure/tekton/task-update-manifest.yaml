@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"tekton.dev/v1","kind":"Task","metadata":{"annotations":{},"name":"update-manifest-dxp","namespace":"tekton-pipelines"},"spec":{"params":[{"name":"image-tag","type":"string"},{"name":"git-url","type":"string"},{"name":"image","type":"string"}],"steps":[{"env":[{"name":"GITHUB_TOKEN","valueFrom":{"secretKeyRef":{"key":"token","name":"github-credentials"}}}],"image":"alpine/git:latest","name":"update-push","script":"#!/bin/sh\ncd $(workspaces.source.path)/source\n# Revenir sur main depuis le detached HEAD\ngit fetch origin main\ngit checkout main\ngit pull origin main\n# Mettre à jour le manifest\nsed -i \"s|image: $(params.image):.*|image: $(params.image):$(params.image-tag)|\" k8s/deployment.yaml\ngit config user.email \"dxp@platform.io\"\ngit config user.name \"DxP Pipeline\"\ngit remote set-url origin https://${GITHUB_TOKEN}@github.com/elfeddi/dxp-demo\ngit add k8s/deployment.yaml\ngit diff --cached --quiet \u0026\u0026 echo \"No changes\" \u0026\u0026 exit 0\ngit commit -m \"ci: update image to $(params.image-tag)\"\ngit push origin main\necho \"Manifest updated and pushed ✓\"\n"}],"workspaces":[{"name":"source"}]}}
+  creationTimestamp: "2026-06-01T15:05:23Z"
+  generation: 3
+  name: update-manifest-dxp
+  namespace: tekton-pipelines
+  resourceVersion: "845902"
+  uid: 2d3ee4cb-e1e6-4480-b511-778829c82627
+spec:
+  params:
+  - name: image-tag
+    type: string
+  - name: git-url
+    type: string
+  - name: image
+    type: string
+  steps:
+  - computeResources: {}
+    env:
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          key: token
+          name: github-credentials
+    image: alpine/git:latest
+    name: update-push
+    script: |
+      #!/bin/sh
+      cd $(workspaces.source.path)/source
+      # Revenir sur main depuis le detached HEAD
+      git fetch origin main
+      git checkout main
+      git pull origin main
+      # Mettre à jour le manifest
+      sed -i "s|image: $(params.image):.*|image: $(params.image):$(params.image-tag)|" k8s/deployment.yaml
+      git config user.email "dxp@platform.io"
+      git config user.name "DxP Pipeline"
+      git remote set-url origin https://${GITHUB_TOKEN}@github.com/elfeddi/dxp-demo
+      git add k8s/deployment.yaml
+      git diff --cached --quiet && echo "No changes" && exit 0
+      git commit -m "ci: update image to $(params.image-tag)"
+      git push origin main
+      echo "Manifest updated and pushed ✓"
+  workspaces:
+  - name: source

@@ -1,0 +1,70 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"tekton.dev/v1","kind":"Pipeline","metadata":{"annotations":{},"labels":{"dxp.io/managed":"true"},"name":"dxp-demo-pipeline","namespace":"tekton-pipelines"},"spec":{"params":[{"default":"https://github.com/elfeddi/dxp-demo","name":"git-url","type":"string"},{"default":"main","name":"git-revision","type":"string"},{"default":"harbor.dxp/dxp/dxp-demo","name":"image","type":"string"}],"tasks":[{"name":"clone","params":[{"name":"url","value":"$(params.git-url)"},{"name":"revision","value":"$(params.git-revision)"}],"taskRef":{"name":"git-clone-dxp"},"workspaces":[{"name":"output","workspace":"source"}]},{"name":"build-push","params":[{"name":"image","value":"$(params.image)"},{"name":"image-tag","value":"$(tasks.clone.results.commit)"}],"runAfter":["clone"],"taskRef":{"name":"kaniko-build-dxp"},"workspaces":[{"name":"source","workspace":"source"}]},{"name":"update-manifest","params":[{"name":"image-tag","value":"$(tasks.clone.results.commit)"},{"name":"git-url","value":"$(params.git-url)"},{"name":"image","value":"$(params.image)"}],"runAfter":["build-push"],"taskRef":{"name":"update-manifest-dxp"},"workspaces":[{"name":"source","workspace":"source"}]}],"workspaces":[{"name":"source"}]}}
+  creationTimestamp: "2026-06-01T15:05:23Z"
+  generation: 1
+  labels:
+    dxp.io/managed: "true"
+  name: dxp-demo-pipeline
+  namespace: tekton-pipelines
+  resourceVersion: "802126"
+  uid: 9f662614-0613-4015-b936-7499624d66b1
+spec:
+  params:
+  - default: https://github.com/elfeddi/dxp-demo
+    name: git-url
+    type: string
+  - default: main
+    name: git-revision
+    type: string
+  - default: harbor.dxp/dxp/dxp-demo
+    name: image
+    type: string
+  tasks:
+  - name: clone
+    params:
+    - name: url
+      value: $(params.git-url)
+    - name: revision
+      value: $(params.git-revision)
+    taskRef:
+      kind: Task
+      name: git-clone-dxp
+    workspaces:
+    - name: output
+      workspace: source
+  - name: build-push
+    params:
+    - name: image
+      value: $(params.image)
+    - name: image-tag
+      value: $(tasks.clone.results.commit)
+    runAfter:
+    - clone
+    taskRef:
+      kind: Task
+      name: kaniko-build-dxp
+    workspaces:
+    - name: source
+      workspace: source
+  - name: update-manifest
+    params:
+    - name: image-tag
+      value: $(tasks.clone.results.commit)
+    - name: git-url
+      value: $(params.git-url)
+    - name: image
+      value: $(params.image)
+    runAfter:
+    - build-push
+    taskRef:
+      kind: Task
+      name: update-manifest-dxp
+    workspaces:
+    - name: source
+      workspace: source
+  workspaces:
+  - name: source

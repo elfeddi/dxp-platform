@@ -1,0 +1,50 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRole","metadata":{"annotations":{},"name":"tekton-triggers-role"},"rules":[{"apiGroups":["triggers.tekton.dev"],"resources":["eventlisteners","triggerbindings","triggertemplates","triggers","clustertriggerbindings","clusterinterceptors","interceptors"],"verbs":["get","list","watch"]},{"apiGroups":["tekton.dev"],"resources":["pipelineruns","pipelineresources","taskruns","pipelines","tasks"],"verbs":["create","get","list","watch"]},{"apiGroups":[""],"resources":["configmaps","secrets","serviceaccounts","events"],"verbs":["get","list","watch","create"]}]}
+  creationTimestamp: "2026-06-01T15:27:35Z"
+  name: tekton-triggers-role
+  resourceVersion: "812484"
+  uid: cdd85baf-61c4-4d3e-9aa5-5390f8959948
+rules:
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - eventlisteners
+  - triggerbindings
+  - triggertemplates
+  - triggers
+  - clustertriggerbindings
+  - clusterinterceptors
+  - interceptors
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelineruns
+  - pipelineresources
+  - taskruns
+  - pipelines
+  - tasks
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  - serviceaccounts
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create

@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"tekton.dev/v1","kind":"Task","metadata":{"annotations":{},"name":"kaniko-build-dxp","namespace":"tekton-pipelines"},"spec":{"params":[{"name":"image","type":"string"},{"name":"image-tag","type":"string"}],"steps":[{"args":["--context=$(workspaces.source.path)/source","--dockerfile=$(workspaces.source.path)/source/Dockerfile","--destination=$(params.image):$(params.image-tag)","--destination=$(params.image):latest","--insecure","--skip-tls-verify","--insecure-pull"],"image":"gcr.io/kaniko-project/executor:latest","name":"build-push","volumeMounts":[{"mountPath":"/kaniko/.docker","name":"docker-config"}]}],"volumes":[{"name":"docker-config","secret":{"items":[{"key":".dockerconfigjson","path":"config.json"}],"secretName":"harbor-credentials"}}],"workspaces":[{"name":"source"}]}}
+  creationTimestamp: "2026-06-01T15:05:23Z"
+  generation: 2
+  name: kaniko-build-dxp
+  namespace: tekton-pipelines
+  resourceVersion: "806419"
+  uid: b996fbe3-e70f-4dc3-8d17-ffcdb11ed0e5
+spec:
+  params:
+  - name: image
+    type: string
+  - name: image-tag
+    type: string
+  steps:
+  - args:
+    - --context=$(workspaces.source.path)/source
+    - --dockerfile=$(workspaces.source.path)/source/Dockerfile
+    - --destination=$(params.image):$(params.image-tag)
+    - --destination=$(params.image):latest
+    - --insecure
+    - --skip-tls-verify
+    - --insecure-pull
+    computeResources: {}
+    image: gcr.io/kaniko-project/executor:latest
+    name: build-push
+    volumeMounts:
+    - mountPath: /kaniko/.docker
+      name: docker-config
+  volumes:
+  - name: docker-config
+    secret:
+      items:
+      - key: .dockerconfigjson
+        path: config.json
+      secretName: harbor-credentials
+  workspaces:
+  - name: source

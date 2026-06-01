@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"tekton.dev/v1","kind":"Task","metadata":{"annotations":{},"name":"git-clone-dxp","namespace":"tekton-pipelines"},"spec":{"params":[{"name":"url","type":"string"},{"default":"main","name":"revision","type":"string"}],"results":[{"description":"SHA du commit cloné","name":"commit"}],"steps":[{"image":"alpine/git:latest","name":"clone","script":"#!/bin/sh\ngit clone $(params.url) $(workspaces.output.path)/source\ncd $(workspaces.output.path)/source\ngit checkout $(params.revision)\ngit rev-parse --short HEAD | tr -d '\\n' \u003e $(results.commit.path)\necho \"Cloned $(params.url) @ $(cat $(results.commit.path))\"\n"}],"workspaces":[{"name":"output"}]}}
+  creationTimestamp: "2026-06-01T15:05:23Z"
+  generation: 1
+  name: git-clone-dxp
+  namespace: tekton-pipelines
+  resourceVersion: "802123"
+  uid: f7f78424-6253-40d7-9469-2a40f6a09371
+spec:
+  params:
+  - name: url
+    type: string
+  - default: main
+    name: revision
+    type: string
+  results:
+  - description: SHA du commit cloné
+    name: commit
+    type: string
+  steps:
+  - computeResources: {}
+    image: alpine/git:latest
+    name: clone
+    script: |
+      #!/bin/sh
+      git clone $(params.url) $(workspaces.output.path)/source
+      cd $(workspaces.output.path)/source
+      git checkout $(params.revision)
+      git rev-parse --short HEAD | tr -d '\n' > $(results.commit.path)
+      echo "Cloned $(params.url) @ $(cat $(results.commit.path))"
+  workspaces:
+  - name: output
