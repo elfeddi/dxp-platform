@@ -11,6 +11,7 @@ metadata:
 type: Opaque
 stringData:
   ARGOCD_TOKEN: ""
+  ARGOCD_URL: "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local/argocd"
   HARBOR_API_TOKEN: ""
   GRAFANA_API_TOKEN: ""
   LITELLM_API_KEY: "dxp-LiteLLM2026"
