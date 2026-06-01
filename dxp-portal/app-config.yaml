@@ -74,13 +74,13 @@ integrations:
 proxy:
   endpoints:
     '/dxp':
-      target: 'http://localhost:8090'
+      target: 'http://localhost:30890'
       changeOrigin: true
       credentials: dangerously-allow-unauthenticated
       headers:
         Authorization: 'Bearer viewer'
     '/dxp-admin':
-      target: 'http://localhost:8090'
+      target: 'http://localhost:30890'
       changeOrigin: true
       credentials: dangerously-allow-unauthenticated
       headers:

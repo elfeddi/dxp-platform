@@ -78,6 +78,19 @@ spec:
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
 
+    - id: provision
+      name: Provisionner sur DxP
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /api/proxy/dxp/api/dxp/provision
+        headers:
+          Content-Type: application/json
+        body:
+          name: ${{ parameters.name }}
+          repo: ${{ steps['publish'].output.remoteUrl }}
+          namespace: ${{ parameters.name }}
+          language: ${{ parameters.language }}
     - id: register
       name: Enregistrer dans le catalogue DxP
       action: catalog:register
