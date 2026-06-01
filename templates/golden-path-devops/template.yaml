@@ -71,20 +71,6 @@ spec:
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
 
-    - id: create-repo
-      name: Créer le dépôt GitHub
-      action: github:repo:create
-      continueOnError: true
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-    - id: publish
-      name: Pousser le code
-      action: github:repo:push
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-
     - id: provision
       name: Provisionner sur DxP
       action: http:backstage:request
@@ -95,9 +81,15 @@ spec:
           Content-Type: application/json
         body:
           name: ${{ parameters.name }}
-          repo: ${{ steps['publish'].output.remoteUrl }}
+          repo: https://github.com/elfeddi/${{ parameters.name }}
           namespace: ${{ parameters.name }}-dev
           language: ${{ parameters.language }}
+    - id: publish
+      name: Pousser le code
+      action: github:repo:push
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
     - id: register
       name: Enregistrer dans le catalogue DxP
       action: catalog:register
