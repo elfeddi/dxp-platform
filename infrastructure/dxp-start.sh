@@ -73,6 +73,21 @@ header "6b. RBAC dxp-provisioner"
 kubectl apply -f ~/dxp-platform/infrastructure/configs/dxp-rbac.yaml > /dev/null 2>&1
 ok "ClusterRole dxp-provisioner appliqué"
 
+# ── 6c. Secret dxp-serve-env ─────────────────────────────────────
+header "6c. Secret dxp-serve-env"
+source ~/dxp-platform/infrastructure/scripts/.env
+kubectl create secret generic dxp-serve-env \
+  --namespace dxp-system \
+  --from-literal=ARGOCD_TOKEN="${ARGOCD_API_TOKEN}" \
+  --from-literal=ARGOCD_URL="https://ingress-nginx-controller.ingress-nginx.svc.cluster.local/argocd" \
+  --from-literal=HARBOR_API_TOKEN="${HARBOR_API_TOKEN}" \
+  --from-literal=GRAFANA_API_TOKEN="${GRAFANA_API_TOKEN}" \
+  --from-literal=LITELLM_API_KEY="${LITELLM_API_KEY}" \
+  --from-literal=LITELLM_API_BASE="http://litellm.llmops.svc.cluster.local:4000" \
+  --from-literal=LITELLM_MODEL="dxp-default" \
+  --dry-run=client -o yaml | kubectl apply -f -
+ok "Secret dxp-serve-env mis à jour avec les tokens"
+
 # ── 7. dxp-serve pod K8s ─────────────────────────────────────────
 header "7. dxp-serve"
 DXP_POD=$(kubectl get pods -n dxp-system -l app=dxp-serve --no-headers 2>/dev/null | grep Running | awk '{print $1}' | head -1)

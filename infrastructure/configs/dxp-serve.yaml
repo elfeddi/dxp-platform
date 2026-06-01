@@ -4,21 +4,6 @@ metadata:
   name: dxp-system
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: dxp-serve-env
-  namespace: dxp-system
-type: Opaque
-stringData:
-  ARGOCD_TOKEN: ""
-  ARGOCD_URL: "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local/argocd"
-  HARBOR_API_TOKEN: ""
-  GRAFANA_API_TOKEN: ""
-  LITELLM_API_KEY: "dxp-LiteLLM2026"
-  LITELLM_API_BASE: "http://litellm.llmops.svc.cluster.local:4000"
-  LITELLM_MODEL: "dxp-default"
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: dxp-serve-config
@@ -52,7 +37,7 @@ metadata:
   namespace: dxp-system
   labels:
     app: dxp-serve
-    version: v0.3.6
+    version: v0.3.9
 spec:
   replicas: 1
   selector:
@@ -62,11 +47,11 @@ spec:
     metadata:
       labels:
         app: dxp-serve
-        version: v0.3.6
+        version: v0.3.9
     spec:
       containers:
         - name: dxp-serve
-          image: localhost:9091/dxp/dxp-serve:v0.3.6
+          image: localhost:9091/dxp/dxp-serve:v0.3.9
           imagePullPolicy: Never
           args: ["serve", "--config", "/config/dxp.yaml", "--addr", ":8090"]
           ports:
