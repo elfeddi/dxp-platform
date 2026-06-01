@@ -1,6 +1,8 @@
 package argocd
 
 import (
+	"bytes"
+	"encoding/json"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -92,6 +94,8 @@ func (b *Backend) ExecuteAction(ctx context.Context, req *gateway.ActionRequest)
 		return b.syncApp(ctx, req)
 	case "refresh":
 		return b.refreshApp(ctx, req)
+	case "create-app":
+		return b.createApp(ctx, req)
 	default:
 		return &gateway.ActionResult{
 			Success: false,
@@ -175,4 +179,67 @@ func (b *Backend) post(ctx context.Context, path string, body io.Reader) (*http.
 	req.Header.Set("Authorization", "Bearer "+b.token)
 	req.Header.Set("Content-Type", "application/json")
 	return b.client.Do(req)
+}
+
+func (b *Backend) createApp(ctx context.Context, req *gateway.ActionRequest) (*gateway.ActionResult, error) {
+	name := req.Target
+	repo := req.Params["repo"]
+	namespace := req.Params["namespace"]
+	path := req.Params["path"]
+	if path == "" {
+		path = "."
+	}
+	path = "."
+
+	body := map[string]interface{}{
+		"apiVersion": "argoproj.io/v1alpha1",
+		"kind":       "Application",
+		"metadata": map[string]interface{}{
+			"name":      name,
+			"namespace": "argocd",
+			"labels":    map[string]interface{}{"dxp.io/managed": "true"},
+		},
+		"spec": map[string]interface{}{
+			"project": "default",
+			"source": map[string]interface{}{
+				"repoURL":        repo,
+				"targetRevision": "main",
+				"path":           path,
+			},
+			"destination": map[string]interface{}{
+				"server":    "https://kubernetes.default.svc",
+				"namespace": namespace,
+			},
+			"syncPolicy": map[string]interface{}{
+				"automated": map[string]interface{}{
+					"prune":    true,
+					"selfHeal": true,
+				},
+			},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return &gateway.ActionResult{Success: false, Message: err.Error()}, nil
+	}
+
+	resp, err := b.post(ctx, "/api/v1/applications", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return &gateway.ActionResult{Success: false, Message: err.Error()}, nil
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == 200 || resp.StatusCode == 201 || resp.StatusCode == 409 {
+		return &gateway.ActionResult{
+			Success: true,
+			Message: fmt.Sprintf("ArgoCD app %q created", name),
+		}, nil
+	}
+
+	return &gateway.ActionResult{
+		Success: false,
+		Message: fmt.Sprintf("ArgoCD API returned %d: %s", resp.StatusCode, string(respBody)),
+	}, nil
 }
