@@ -68,6 +68,11 @@ header "6. Harbor"
 kubectl rollout restart deployment harbor-jobservice -n harbor > /dev/null 2>&1 || true
 ok "Harbor jobservice redémarré"
 
+# ── 6b. RBAC dxp-provisioner ─────────────────────────────────────
+header "6b. RBAC dxp-provisioner"
+kubectl apply -f ~/dxp-platform/infrastructure/configs/dxp-rbac.yaml > /dev/null 2>&1
+ok "ClusterRole dxp-provisioner appliqué"
+
 # ── 7. dxp-serve pod K8s ─────────────────────────────────────────
 header "7. dxp-serve"
 DXP_POD=$(kubectl get pods -n dxp-system -l app=dxp-serve --no-headers 2>/dev/null | grep Running | awk '{print $1}' | head -1)
