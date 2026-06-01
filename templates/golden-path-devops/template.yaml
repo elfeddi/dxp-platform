@@ -77,7 +77,6 @@ spec:
       input:
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
-        allowedHosts: ['github.com']
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - id: provision
