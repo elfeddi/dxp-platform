@@ -71,19 +71,6 @@ spec:
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
 
-    - id: provision
-      name: Provisionner sur DxP
-      action: http:backstage:request
-      input:
-        method: POST
-        path: /api/proxy/dxp-admin/api/dxp/provision
-        headers:
-          Content-Type: application/json
-        body:
-          name: ${{ parameters.name }}
-          repo: https://github.com/elfeddi/${{ parameters.name }}
-          namespace: ${{ parameters.name }}-dev
-          language: ${{ parameters.language }}
     - id: publish
       name: Pousser le code
       action: github:repo:push
