@@ -48,6 +48,7 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
+	s.mux.HandleFunc("GET /readyz", s.handleReadyz)
 	s.mux.HandleFunc("GET /api/dxp/status", s.handlePlatformStatus)
 	s.mux.HandleFunc("POST /api/dxp/generate", s.handleGenerate)
 	s.mux.HandleFunc("POST /api/dxp/diagnose", s.handleDiagnose)
@@ -74,6 +75,19 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		"ready":      health.Ready,
 		"checked_at": health.CheckedAt,
 	})
+}
+
+func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
+	if s.obs == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+		return
+	}
+	health := s.obs.Health.Get()
+	if !health.Ready {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not ready"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
 func (s *Server) handlePlatformStatus(w http.ResponseWriter, r *http.Request) {
