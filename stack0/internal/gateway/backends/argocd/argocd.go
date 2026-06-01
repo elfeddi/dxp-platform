@@ -187,9 +187,8 @@ func (b *Backend) createApp(ctx context.Context, req *gateway.ActionRequest) (*g
 	namespace := req.Params["namespace"]
 	path := req.Params["path"]
 	if path == "" {
-		path = "."
+		path = "k8s"
 	}
-	path = "."
 
 	body := map[string]interface{}{
 		"apiVersion": "argoproj.io/v1alpha1",

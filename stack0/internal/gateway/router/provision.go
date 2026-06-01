@@ -1,10 +1,15 @@
 package router
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/elfeddi/dxp/internal/gateway"
 	"github.com/elfeddi/dxp/internal/gateway/middleware"
@@ -118,7 +123,25 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Étape 3 — Webhook (backlog)
-	result.Steps["webhook"] = "pending"
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	if githubToken == "" {
+		result.Steps["webhook"] = "skipped: GITHUB_TOKEN not set"
+	} else {
+		owner, repoName, whErr := parseGitHubRepo(req.Repo)
+		if whErr != nil {
+			result.Steps["webhook"] = fmt.Sprintf("skipped: %v", whErr)
+		} else {
+			webhookURL := os.Getenv("DXP_WEBHOOK_URL")
+			if webhookURL == "" {
+				webhookURL = "http://158.158.8.131:9292/"
+			}
+			if err := createGitHubWebhook(githubToken, owner, repoName, webhookURL); err != nil {
+				result.Steps["webhook"] = fmt.Sprintf("error: %v", err)
+			} else {
+				result.Steps["webhook"] = "created"
+			}
+		}
+	}
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -140,4 +163,51 @@ func contains(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func parseGitHubRepo(repoURL string) (owner, repo string, err error) {
+	u := repoURL
+	for _, prefix := range []string{"https://github.com/", "http://github.com/", "github.com/"} {
+		u = strings.TrimPrefix(u, prefix)
+	}
+	u = strings.TrimSuffix(u, ".git")
+	parts := strings.Split(u, "/")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("expected github.com/owner/repo, got: %s", repoURL)
+	}
+	return parts[0], parts[1], nil
+}
+
+func createGitHubWebhook(token, owner, repo, webhookURL string) error {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name":   "web",
+		"active": true,
+		"events": []string{"push"},
+		"config": map[string]string{
+			"url":          webhookURL,
+			"content_type": "json",
+			"insecure_ssl": "0",
+		},
+	})
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/hooks", owner, repo)
+	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// 201 = créé, 422 = déjà existant → les deux sont ok
+	if resp.StatusCode == 201 || resp.StatusCode == 422 {
+		return nil
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("github api %d: %s", resp.StatusCode, string(body))
 }
