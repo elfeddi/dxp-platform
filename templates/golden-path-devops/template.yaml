@@ -71,13 +71,19 @@ spec:
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
 
-    - id: publish
-      name: Publier sur GitHub
-      action: publish:github
+    - id: create-repo
+      name: Créer le dépôt GitHub
+      action: github:repo:create
+      continueOnError: true
       input:
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
-        token: ${{ secrets.GITHUB_TOKEN }}
+    - id: publish
+      name: Pousser le code
+      action: github:repo:push
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
 
     - id: provision
       name: Provisionner sur DxP
