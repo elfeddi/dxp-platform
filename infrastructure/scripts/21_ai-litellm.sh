@@ -2,18 +2,16 @@
 source "$(dirname "$0")/lib/common.sh"
 load_env
 
-title "10 — LLMOps (LiteLLM + pgvector)"
+title "21 — LiteLLM"
 
-kubectl create namespace $DXP_NAMESPACE_LLMOPS --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace llmops --dry-run=client -o yaml | kubectl apply -f -
 
-# LiteLLM
-log "Installation LiteLLM..."
 kubectl apply -f - << LITELLMEOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: litellm
-  namespace: ${DXP_NAMESPACE_LLMOPS}
+  namespace: llmops
 spec:
   replicas: 1
   selector:
@@ -37,14 +35,14 @@ spec:
             memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: litellm
-  namespace: ${DXP_NAMESPACE_LLMOPS}
+  namespace: llmops
 spec:
   type: NodePort
   selector:
@@ -55,13 +53,5 @@ spec:
     nodePort: 30096
 LITELLMEOF
 
-# pgvector
-log "Installation pgvector..."
-helm upgrade --install pgvector bitnami/postgresql \
-  --namespace $DXP_NAMESPACE_LLMOPS \
-  --set auth.password="${PGVECTOR_PASSWORD}" \
-  --set auth.database=dxp_vectors \
-  --wait --timeout 3m
-
-wait_pods $DXP_NAMESPACE_LLMOPS
-ok "LiteLLM + pgvector installés"
+wait_pods llmops
+ok "LiteLLM installé — NodePort 30096"
