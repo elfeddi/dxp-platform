@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: update-manifest-dxp-serve
+  namespace: tekton-pipelines
+  labels:
+    dxp.io/managed: "true"
+spec:
+  params:
+  - name: image-tag
+    type: string
+  - name: git-url
+    type: string
+  - name: image
+    type: string
+  workspaces:
+  - name: source
+  steps:
+  - name: update-push
+    image: alpine/git:latest
+    env:
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: github-credentials
+          key: token
+    script: |
+      #!/bin/sh
+      cd $(workspaces.source.path)/source
+      git fetch origin main
+      git checkout main
+      git pull origin main
+      sed -i "s|image: $(params.image):.*|image: $(params.image):$(params.image-tag)|" infrastructure/configs/dxp-serve.yaml
+      git config user.email "dxp@platform.io"
+      git config user.name "DxP Pipeline"
+      git remote set-url origin https://${GITHUB_TOKEN}@github.com/elfeddi/dxp-platform
+      git add infrastructure/configs/dxp-serve.yaml
+      git diff --cached --quiet && echo "No changes" && exit 0
+      git commit -m "ci: update dxp-serve image to $(params.image-tag)"
+      git push origin main
+      echo "Manifest updated and pushed"
