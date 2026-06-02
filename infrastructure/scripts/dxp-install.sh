@@ -2,7 +2,7 @@
 source "$(dirname "$0")/lib/common.sh"
 
 # ══════════════════════════════════════════════════════
-# DxP Install — Orchestrateur principal
+# DxP Install — Orchestrateur principal (k3s natif)
 # Usage : ./dxp-install.sh [script_number]
 # Exemple : ./dxp-install.sh 03  ← rejoue uniquement 03-argocd.sh
 # Sans argument : installe tout depuis le début
@@ -22,16 +22,15 @@ run_step() {
   bash "$file" || fail "Erreur dans $(basename $file) — arrêt"
 }
 
-title "DxP Platform — Installation complète"
+title "DxP Platform — Installation complète (k3s natif)"
 check_prereqs
 
 if [ -n "$1" ]; then
-  # Rejouer un script spécifique
   run_step "$1"
 else
-  # Installation complète
-  run_step "01"   # Cluster k3d
+  run_step "01"   # Vérification cluster k3s
   run_step "02"   # Repos Helm
+  run_step "00"   # Ingress + cert-manager
   run_step "03"   # ArgoCD
   run_step "04"   # Harbor + CoreDNS
   run_step "05"   # Tekton

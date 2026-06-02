@@ -26,11 +26,12 @@ kubectl patch configmap coredns -n kube-system --type merge -p \
 kubectl rollout restart deployment coredns -n kube-system
 kubectl rollout status deployment coredns -n kube-system --timeout=60s
 
-# Registries k3d pour Harbor insecure
-log "Patch registries k3d..."
+# Config registre insecure k3s natif (remplace la partie k3d)
+log "Configuration registre insecure k3s..."
 HARBOR_IP=$(kubectl get svc harbor -n $DXP_NAMESPACE_HARBOR -o jsonpath='{.spec.clusterIP}')
-for node in $(k3d node list | grep dxp-poc | grep -v tools | grep -v serverlb | awk '{print $1}'); do
-  docker exec "${node}" sh -c "mkdir -p /etc/rancher/k3s && cat > /etc/rancher/k3s/registries.yaml << REGEOF
+
+sudo mkdir -p /etc/rancher/k3s
+sudo tee /etc/rancher/k3s/registries.yaml > /dev/null << REGEOF
 mirrors:
   harbor.dxp:
     endpoint:
@@ -39,8 +40,13 @@ configs:
   harbor.dxp:
     tls:
       insecure_skip_verify: true
-REGEOF"
-done
+REGEOF
+
+# Redémarrer k3s pour prendre en compte le registre
+sudo systemctl restart k3s
+sleep 20
+kubectl wait --for=condition=ready node --all --timeout=60s
 
 ok "Harbor installé — http://${DXP_IP}:9091"
 ok "CoreDNS harbor.dxp configuré"
+ok "Registre insecure k3s configuré"
