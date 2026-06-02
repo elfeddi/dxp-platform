@@ -9,6 +9,11 @@ kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -
 helm upgrade --install cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --set crds.enabled=true \
+  --set nodeSelector.role=infra \
+  --set webhook.nodeSelector.role=infra \
+  --set cainjector.nodeSelector.role=infra \
+  --set resources.requests.memory=64Mi \
+  --set resources.limits.memory=256Mi \
   --wait --timeout 5m
 
 kubectl apply -f - << ISSEOF
@@ -43,4 +48,4 @@ ISSEOF
 
 sleep 5
 kubectl get clusterissuer
-ok "cert-manager + ClusterIssuer dxp-ca-issuer prêts"
+ok "cert-manager + ClusterIssuer dxp-ca-issuer prêts — Master"

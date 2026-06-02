@@ -2,7 +2,7 @@
 source "$(dirname "$0")/lib/common.sh"
 load_env
 
-title "12 — Loki"
+title "12 — Loki (single binary)"
 
 helm upgrade --install loki grafana/loki \
   --namespace monitoring \
@@ -11,6 +11,9 @@ helm upgrade --install loki grafana/loki \
   --set loki.storage.type=filesystem \
   --set loki.useTestSchema=true \
   --set singleBinary.replicas=1 \
+  --set singleBinary.nodeSelector.role=observability \
+  --set singleBinary.resources.requests.memory=128Mi \
+  --set singleBinary.resources.limits.memory=256Mi \
   --set read.replicas=0 \
   --set write.replicas=0 \
   --set backend.replicas=0 \
@@ -20,4 +23,4 @@ helm upgrade --install loki grafana/loki \
   --wait --timeout 5m
 
 wait_pods monitoring
-ok "Loki installé"
+ok "Loki installé — Worker1"

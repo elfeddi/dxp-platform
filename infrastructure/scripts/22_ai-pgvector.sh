@@ -10,7 +10,10 @@ helm upgrade --install pgvector bitnami/postgresql \
   --namespace llmops \
   --set auth.password="${PGVECTOR_PASSWORD}" \
   --set auth.database=dxp_vectors \
+  --set primary.nodeSelector.role=infra \
+  --set primary.resources.requests.memory=128Mi \
+  --set primary.resources.limits.memory=256Mi \
   --wait --timeout 3m
 
 wait_pods llmops
-ok "pgvector installé"
+ok "pgvector installé — Master"

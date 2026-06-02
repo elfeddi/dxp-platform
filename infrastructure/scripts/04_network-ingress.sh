@@ -13,7 +13,10 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.service.type=NodePort \
   --set controller.service.nodePorts.http=30080 \
   --set controller.service.nodePorts.https=30444 \
+  --set controller.nodeSelector.role=infra \
+  --set controller.resources.requests.memory=128Mi \
+  --set controller.resources.limits.memory=512Mi \
   --wait --timeout 3m
 
 wait_pods ingress-nginx
-ok "nginx Ingress Controller installé"
+ok "nginx Ingress Controller installé — Master"

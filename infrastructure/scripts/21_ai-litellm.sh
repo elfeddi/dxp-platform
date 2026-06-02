@@ -2,7 +2,7 @@
 source "$(dirname "$0")/lib/common.sh"
 load_env
 
-title "21 — LiteLLM"
+title "21 — LiteLLM (API externe)"
 
 kubectl create namespace llmops --dry-run=client -o yaml | kubectl apply -f -
 
@@ -22,6 +22,8 @@ spec:
       labels:
         app: litellm
     spec:
+      nodeSelector:
+        role: infra
       containers:
       - name: litellm
         image: ghcr.io/berriai/litellm:main-latest
@@ -35,7 +37,7 @@ spec:
             memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "1Gi"
+            memory: "512Mi"
             cpu: "500m"
 ---
 apiVersion: v1
@@ -54,4 +56,4 @@ spec:
 LITELLMEOF
 
 wait_pods llmops
-ok "LiteLLM installé — NodePort 30096"
+ok "LiteLLM installé — NodePort 30096 — Master"

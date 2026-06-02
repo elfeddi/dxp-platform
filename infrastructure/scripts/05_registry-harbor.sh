@@ -2,22 +2,28 @@
 source "$(dirname "$0")/lib/common.sh"
 load_env
 
-title "04 — Harbor + CoreDNS"
+title "05 — Harbor + CoreDNS + registre k3s"
 
-# Harbor
-kubectl create namespace $DXP_NAMESPACE_HARBOR --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace harbor --dry-run=client -o yaml | kubectl apply -f -
 
 helm upgrade --install harbor harbor/harbor \
-  --namespace $DXP_NAMESPACE_HARBOR \
+  --namespace harbor \
   --set expose.type=nodePort \
   --set expose.nodePort.ports.http.nodePort=30091 \
   --set expose.tls.enabled=false \
   --set externalURL=http://harbor.dxp \
   --set harborAdminPassword="${HARBOR_ADMIN_PASSWORD}" \
   --set persistence.enabled=true \
+  --set nodeSelector.role=infra \
+  --set core.resources.requests.memory=256Mi \
+  --set core.resources.limits.memory=512Mi \
+  --set registry.resources.requests.memory=128Mi \
+  --set registry.resources.limits.memory=256Mi \
+  --set jobservice.resources.requests.memory=64Mi \
+  --set jobservice.resources.limits.memory=128Mi \
   --wait --timeout 8m
 
-wait_pods $DXP_NAMESPACE_HARBOR
+wait_pods harbor
 
 # CoreDNS patch harbor.dxp
 log "Patch CoreDNS harbor.dxp..."
@@ -26,10 +32,9 @@ kubectl patch configmap coredns -n kube-system --type merge -p \
 kubectl rollout restart deployment coredns -n kube-system
 kubectl rollout status deployment coredns -n kube-system --timeout=60s
 
-# Config registre insecure k3s natif (remplace la partie k3d)
+# Registre insecure k3s natif
 log "Configuration registre insecure k3s..."
-HARBOR_IP=$(kubectl get svc harbor -n $DXP_NAMESPACE_HARBOR -o jsonpath='{.spec.clusterIP}')
-
+HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
 sudo mkdir -p /etc/rancher/k3s
 sudo tee /etc/rancher/k3s/registries.yaml > /dev/null << REGEOF
 mirrors:
@@ -42,11 +47,9 @@ configs:
       insecure_skip_verify: true
 REGEOF
 
-# Redémarrer k3s pour prendre en compte le registre
 sudo systemctl restart k3s
 sleep 20
 kubectl wait --for=condition=ready node --all --timeout=60s
 
-ok "Harbor installé — http://${DXP_IP}:9091"
-ok "CoreDNS harbor.dxp configuré"
-ok "Registre insecure k3s configuré"
+ok "Harbor installé — http://${DXP_IP}:9091 — Master"
+ok "CoreDNS + registre k3s configurés"

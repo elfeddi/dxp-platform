@@ -18,12 +18,23 @@ helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheu
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}" \
   --set grafana.service.type=NodePort \
   --set grafana.service.nodePort=30031 \
+  --set grafana.nodeSelector.role=observability \
   --set grafana.grafana\.ini.server.domain="${DXP_IP}" \
   --set grafana.grafana\.ini.server.root_url="http://${DXP_IP}:3001" \
+  --set grafana.resources.requests.memory=128Mi \
+  --set grafana.resources.limits.memory=256Mi \
+  --set prometheus.prometheusSpec.replicas=2 \
+  --set prometheus.prometheusSpec.nodeSelector.role=observability \
+  --set prometheus.prometheusSpec.retention=7d \
+  --set prometheus.prometheusSpec.resources.requests.memory=256Mi \
+  --set prometheus.prometheusSpec.resources.limits.memory=512Mi \
   --set prometheus-node-exporter.hostRootFsMount.enabled=false \
+  --set alertmanager.nodeSelector.role=observability \
   --set alertmanager.service.type=NodePort \
   --set alertmanager.service.nodePort=30093 \
+  --set alertmanager.alertmanagerSpec.resources.requests.memory=64Mi \
+  --set alertmanager.alertmanagerSpec.resources.limits.memory=128Mi \
   --wait --timeout 8m
 
 wait_pods monitoring
-ok "Prometheus + Grafana + Alertmanager installés — http://${DXP_IP}:3001"
+ok "Prometheus(2) + Grafana + Alertmanager installés — Worker1"

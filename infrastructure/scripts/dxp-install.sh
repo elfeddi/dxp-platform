@@ -5,6 +5,11 @@ source "$(dirname "$0")/lib/common.sh"
 # DxP Install — Orchestrateur principal (k3s natif)
 # Usage : ./dxp-install.sh        ← installation complète
 #         ./dxp-install.sh 06     ← rejoue uniquement 06_cicd-argocd.sh
+#
+# Architecture POC (ADR S0-020) :
+#   Master  B4ms  role=infra          → plateforme + dataops + AI
+#   Worker1 B2s   role=observability  → LGTM + OTel
+#   Worker2 B2s   role=workload       → apps clients (taint NoSchedule)
 # ══════════════════════════════════════════════════════
 
 SCRIPTS_DIR="$(dirname "$0")"
@@ -20,34 +25,53 @@ run_step() {
   bash "$file" || fail "Erreur dans $(basename $file) — arrêt"
 }
 
-title "DxP Platform — Installation complète (k3s natif)"
+title "DxP Platform — Installation complète (k3s natif · POC production-like)"
 check_prereqs
 
 if [ -n "$1" ]; then
   run_step "$1"
 else
-  run_step "01"   # Core — k3s vérification
-  run_step "02"   # Core — repos Helm
-  run_step "03"   # Core — cert-manager
-  run_step "04"   # Network — ingress
-  run_step "05"   # Registry — Harbor + CoreDNS
-  run_step "06"   # CI/CD — ArgoCD
-  run_step "07"   # CI/CD — Tekton
-  run_step "08"   # Security — Vault
-  run_step "09"   # Security — Kyverno
-  run_step "10"   # Security — Falco (optionnel)
-  run_step "11"   # Observability — Prometheus + Grafana
-  run_step "12"   # Observability — Loki
-  run_step "13"   # Observability — Tempo
-  run_step "14"   # Observability — OTel
-  run_step "15"   # Observability — Grafana datasources
-  run_step "16"   # SSO — Dex
-  run_step "17"   # DataOps — Airflow
-  run_step "18"   # DataOps — dbt + Feast
-  run_step "19"   # MLOps — MLflow
-  run_step "20"   # AI — Ollama
-  run_step "21"   # AI — LiteLLM
-  run_step "22"   # AI — pgvector
+  # Core
+  run_step "01"   # k3s vérification + labels
+  run_step "02"   # Repos Helm
+  run_step "03"   # cert-manager + ClusterIssuer
+
+  # Network
+  run_step "04"   # Ingress nginx
+
+  # Registry
+  run_step "05"   # Harbor + CoreDNS + registre k3s
+
+  # CI/CD
+  run_step "06"   # ArgoCD (2 replicas)
+  run_step "07"   # Tekton
+
+  # Security
+  run_step "08"   # Vault (mode dev)
+  run_step "09"   # Kyverno (2 replicas)
+  run_step "10"   # Falco (optionnel)
+
+  # Observability
+  run_step "11"   # Prometheus + Grafana (Worker1)
+  run_step "12"   # Loki (Worker1)
+  run_step "13"   # Tempo (Worker1)
+  run_step "14"   # OTel Collector (DaemonSet)
+  run_step "15"   # Grafana datasources
+
+  # SSO
+  run_step "16"   # Dex SSO
+
+  # DataOps
+  run_step "17"   # Airflow (Master)
+  run_step "18"   # dbt + Feast + Great Expectations
+
+  # MLOps
+  run_step "19"   # MLflow (Master)
+
+  # AI/LLMOps
+  run_step "20"   # Ollama (désactivé POC)
+  run_step "21"   # LiteLLM (Master)
+  run_step "22"   # pgvector (Master)
 fi
 
 title "DxP Platform — Installation terminée"

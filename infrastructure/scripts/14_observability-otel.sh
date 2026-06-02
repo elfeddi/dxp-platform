@@ -2,7 +2,7 @@
 source "$(dirname "$0")/lib/common.sh"
 load_env
 
-title "14 — OTel Collector"
+title "14 — OTel Collector (DaemonSet)"
 
 helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
   --namespace monitoring \
@@ -12,7 +12,9 @@ helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
   --set config.receivers.otlp.protocols.http.endpoint="0.0.0.0:4318" \
   --set config.exporters.otlp/tempo.endpoint="tempo.monitoring.svc.cluster.local:4317" \
   --set config.exporters.otlp/tempo.tls.insecure=true \
+  --set resources.requests.memory=64Mi \
+  --set resources.limits.memory=128Mi \
   --wait --timeout 5m
 
 wait_pods monitoring
-ok "OTel Collector installé"
+ok "OTel Collector installé — DaemonSet (tous les nœuds)"
