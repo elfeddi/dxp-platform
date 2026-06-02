@@ -2,3 +2,4 @@ infrastructure/scripts/.env
 dxp-portal/*.pem
 dxp-portal/*.bak
 stack0/dxp_linux
+.env.backstage
