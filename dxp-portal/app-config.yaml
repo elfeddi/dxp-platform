@@ -65,12 +65,7 @@ integrations:
   github:
     - host: github.com
       token: ${GITHUB_TOKEN}
-      apps:
-        - appId: 3903689
-          clientId: Iv23liS6GCgXTm6pH3yI
-          clientSecret: ${GITHUB_APP_CLIENT_SECRET}
-          webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
-          privateKey: ${GITHUB_APP_PRIVATE_KEY}
+
 proxy:
   endpoints:
     '/dxp':
