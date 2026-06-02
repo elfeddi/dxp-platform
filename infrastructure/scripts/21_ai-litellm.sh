@@ -37,7 +37,7 @@ spec:
             memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "500m"
 ---
 apiVersion: v1
@@ -56,4 +56,4 @@ spec:
 LITELLMEOF
 
 wait_pods llmops
-ok "LiteLLM installé — NodePort 30096 — Master"
+ok "LiteLLM installe — NodePort 30096 — Master"
