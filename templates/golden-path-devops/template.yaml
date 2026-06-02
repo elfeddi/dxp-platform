@@ -68,19 +68,14 @@ spec:
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
-    - id: create-repo
-      name: Créer le dépôt GitHub
-      action: github:repo:create
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        defaultBranch: main
-        description: ${{ parameters.description }}
     - id: publish
-      name: Pousser le code
-      action: github:repo:push
+      name: Créer le dépôt et pousser le code
+      action: publish:github
       input:
         repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
         defaultBranch: main
+        repoVisibility: public
     - id: register
       name: Enregistrer dans le catalogue DxP
       action: catalog:register
