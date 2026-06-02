@@ -46,7 +46,6 @@ spec:
             - Node.js
             - Python
             - Go
-
     - title: Dépôt GitHub
       required:
         - repoUrl
@@ -58,7 +57,6 @@ spec:
           ui:options:
             allowedHosts:
               - github.com
-
   steps:
     - id: fetch-base
       name: Générer le squelette du service
@@ -70,7 +68,13 @@ spec:
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
-
+    - id: create-repo
+      name: Créer le dépôt GitHub
+      action: github:repo:create
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        description: ${{ parameters.description }}
     - id: publish
       name: Pousser le code
       action: github:repo:push
@@ -83,7 +87,6 @@ spec:
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
-
   output:
     links:
       - title: Voir le dépôt GitHub
