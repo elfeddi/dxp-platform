@@ -1,0 +1,13 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: dxp-serve-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+  - name: git-url
+    value: $(body.repository.clone_url)
+  - name: git-revision
+    value: $(body.after)
+  - name: image
+    value: harbor.dxp/dxp/dxp-serve

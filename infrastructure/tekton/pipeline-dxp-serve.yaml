@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: dxp-serve-pipeline
+  namespace: tekton-pipelines
+  labels:
+    dxp.io/managed: "true"
+spec:
+  params:
+  - name: git-url
+    type: string
+    default: https://github.com/elfeddi/dxp-platform
+  - name: git-revision
+    type: string
+    default: main
+  - name: image
+    type: string
+    default: harbor.dxp/dxp/dxp-serve
+  tasks:
+  - name: clone
+    taskRef:
+      name: git-clone-dxp
+    params:
+    - name: url
+      value: $(params.git-url)
+    - name: revision
+      value: $(params.git-revision)
+    workspaces:
+    - name: output
+      workspace: source
+  - name: build-push
+    runAfter: [clone]
+    taskRef:
+      name: kaniko-build-dxp-serve
+    params:
+    - name: image
+      value: $(params.image)
+    - name: image-tag
+      value: $(tasks.clone.results.commit)
+    workspaces:
+    - name: source
+      workspace: source
+  - name: update-manifest
+    runAfter: [build-push]
+    taskRef:
+      name: update-manifest-dxp
+    params:
+    - name: image-tag
+      value: $(tasks.clone.results.commit)
+    - name: git-url
+      value: $(params.git-url)
+    - name: image
+      value: $(params.image)
+    workspaces:
+    - name: source
+      workspace: source
+  workspaces:
+  - name: source

@@ -1,0 +1,35 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: dxp-serve-template
+  namespace: tekton-pipelines
+spec:
+  params:
+  - name: git-url
+  - name: git-revision
+  - name: image
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1
+    kind: PipelineRun
+    metadata:
+      generateName: dxp-serve-run-
+      namespace: tekton-pipelines
+    spec:
+      params:
+      - name: git-url
+        value: $(tt.params.git-url)
+      - name: git-revision
+        value: $(tt.params.git-revision)
+      - name: image
+        value: $(tt.params.image)
+      pipelineRef:
+        name: dxp-serve-pipeline
+      workspaces:
+      - name: source
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi

@@ -1,0 +1,29 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: dxp-serve-listener
+  namespace: tekton-pipelines
+  labels:
+    dxp.io/managed: "true"
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+  - name: dxp-serve-trigger
+    bindings:
+    - ref: dxp-serve-binding
+    template:
+      ref: dxp-serve-template
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: el-dxp-serve-nodeport
+  namespace: tekton-pipelines
+spec:
+  type: NodePort
+  selector:
+    eventlistener: dxp-serve-listener
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30097
