@@ -8,13 +8,14 @@ kubectl create namespace mlops --dry-run=client -o yaml | kubectl apply -f -
 
 helm upgrade --install mlflow community-charts/mlflow \
   --namespace mlops \
-  --set service.type=NodePort \
+  --set image.tag=2.19.0 \
   --set nodeSelector.role=infra \
-  --set backendStore.postgres.enabled=false \
-  --set backendStore.databaseMigration=false \
-  --set resources.requests.memory=128Mi \
-  --set resources.limits.memory=256Mi \
-  --wait --timeout 5m
+  --set securityContext.runAsUser=0 \
+  --set securityContext.runAsGroup=0 \
+  --set securityContext.runAsNonRoot=false \
+  --set resources.requests.memory=512Mi \
+  --set resources.limits.memory=2Gi \
+  --wait --timeout 10m
 
 wait_pods mlops
-ok "MLflow installé — Master"
+ok "MLflow installe — Master"
