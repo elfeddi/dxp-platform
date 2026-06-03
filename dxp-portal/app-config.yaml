@@ -52,7 +52,7 @@ backend:
   # The production database configuration is stored in app-config.production.yaml
   database:
     client: better-sqlite3
-    connection: ':memory:'
+    connection: '/home/azureuser/dxp-platform/dxp-portal/backstage.db'
   # see https://backstage.io/docs/ai/mcp-actions#actions-configuration for more details
   actions:
     pluginSources:
@@ -130,10 +130,15 @@ catalog:
 
     # Local example template
     - type: file
-      target: ../../templates/golden-path-devops/template.yaml
+      target: ../../../../templates/golden-path-devops/template.yaml
       rules:
         - allow: [Template]
 
+    # DxP serve — Control Plane
+    - type: file
+      target: ../../../../stack0/catalog-info.yaml
+      rules:
+        - allow: [Component]
     # Local example organizational data
     - type: file
       target: ../../examples/org.yaml
