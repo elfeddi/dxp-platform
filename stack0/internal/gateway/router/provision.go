@@ -166,7 +166,7 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 		} else {
 			webhookURL := os.Getenv("DXP_WEBHOOK_URL")
 			if webhookURL == "" {
-				webhookURL = "http://158.158.8.131:9292/"
+				webhookURL = "http://158.158.8.131:30092/"
 			}
 			if err := createGitHubWebhook(githubToken, owner, repoName, webhookURL); err != nil {
 				result.Steps["webhook"] = fmt.Sprintf("error: %v", err)
