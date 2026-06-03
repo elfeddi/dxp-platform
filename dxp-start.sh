@@ -27,7 +27,7 @@ ok "ArgoCD pret"
 log "Regeneration token ArgoCD..."
 kubectl port-forward -n argocd svc/argocd-server 19090:80 > /tmp/pf-argocd.log 2>&1 &
 PF_PID=$!
-sleep 8
+sleep 20
 
 SESSION_TOKEN=$(curl -sk -X POST http://localhost:19090/api/v1/session \
   -H "Content-Type: application/json" \
