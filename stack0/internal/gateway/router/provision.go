@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elfeddi/dxp/internal/gateway"
 	"github.com/elfeddi/dxp/internal/gateway/middleware"
 	"github.com/elfeddi/dxp/internal/gateway/rbac"
 	corev1 "k8s.io/api/core/v1"
@@ -221,4 +222,74 @@ func createGitHubRepo(token, owner, repoName string) error {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	return fmt.Errorf("github api %d: %s", resp.StatusCode, string(body))
+}
+
+// handleProvisionArgoCD crée une app ArgoCD pour un service déjà buildé
+// Appelé par Tekton après le build — le repo est non vide à ce stade
+func (s *Server) handleProvisionArgoCD(w http.ResponseWriter, r *http.Request) {
+	role, ok := middleware.RoleFromContext(r.Context())
+	if !ok {
+		middleware.WriteError(w, http.StatusForbidden, "no role in context")
+		return
+	}
+	if err := s.rbac.Check(role, rbac.OpExecuteAction, false); err != nil {
+		middleware.WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
+
+	var req ProvisionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %s", err))
+		return
+	}
+	if req.Name == "" || req.Repo == "" || req.Namespace == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "name, repo and namespace are required")
+		return
+	}
+
+	result := ProvisionResult{
+		Name:      req.Name,
+		Namespace: req.Namespace,
+		Steps:     make(map[string]string),
+	}
+
+	// Créer l'app ArgoCD via backend C2
+	argoBackend, err := s.registry.Get("argocd-main")
+	if err != nil {
+		argoBackend, err = s.registry.Get("argocd")
+	}
+	if err != nil {
+		result.Steps["argocd_app"] = "error: argocd backend not found"
+		result.Error = "argocd backend not found"
+		writeJSON(w, http.StatusInternalServerError, result)
+		return
+	}
+
+	actionReq := &gateway.ActionRequest{
+		Action: "create-app",
+		Target: req.Name,
+		Params: map[string]string{
+			"repo":      req.Repo,
+			"namespace": req.Namespace,
+			"path":      "k8s",
+		},
+	}
+
+	actionResult, err := argoBackend.ExecuteAction(r.Context(), actionReq)
+	if err != nil {
+		result.Steps["argocd_app"] = fmt.Sprintf("error: %v", err)
+		result.Error = err.Error()
+		writeJSON(w, http.StatusInternalServerError, result)
+		return
+	}
+
+	if !actionResult.Success {
+		result.Steps["argocd_app"] = fmt.Sprintf("error: %s", actionResult.Message)
+		result.Error = actionResult.Message
+		writeJSON(w, http.StatusInternalServerError, result)
+		return
+	}
+
+	result.Steps["argocd_app"] = "created"
+	writeJSON(w, http.StatusOK, result)
 }
