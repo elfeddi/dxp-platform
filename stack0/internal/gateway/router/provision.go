@@ -104,6 +104,26 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 	}
 	result.Steps["namespace"] = "created"
 
+	// Étape 2 — Attendre que le repo GitHub soit accessible (max 15s)
+	repoOwner, repoName3, _ := parseGitHubRepo(req.Repo)
+	repoURL := fmt.Sprintf("https://api.github.com/repos/%s/%s", repoOwner, repoName3)
+	for i := 0; i < 5; i++ {
+		repoReq, _ := http.NewRequest("GET", repoURL, nil)
+		repoReq.Header.Set("Authorization", "Bearer "+githubToken2)
+		repoReq.Header.Set("Accept", "application/vnd.github+json")
+		repoClient := &http.Client{Timeout: 5 * time.Second}
+		repoResp, repoErr := repoClient.Do(repoReq)
+		if repoErr == nil && repoResp.StatusCode == 200 {
+			repoResp.Body.Close()
+			break
+		}
+		if repoResp != nil {
+			repoResp.Body.Close()
+		}
+		time.Sleep(3 * time.Second)
+	}
+	time.Sleep(2 * time.Second)
+
 	// Étape 2 — Application ArgoCD via backend C4
 	argoBackend, err := s.registry.Get("argocd-main")
 	if err != nil {
