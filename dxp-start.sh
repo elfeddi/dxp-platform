@@ -62,9 +62,16 @@ if [ -z "$ARGOCD_API_TOKEN" ]; then
   fail "Impossible de generer le token ArgoCD API"
 fi
 
-kubectl patch secret dxp-serve-env -n dxp-system \
-  --type merge \
-  -p "{\"stringData\":{\"ARGOCD_TOKEN\":\"$ARGOCD_API_TOKEN\"}}" &>/dev/null
+source ~/dxp-platform/infrastructure/scripts/.env
+kubectl create secret generic dxp-serve-env -n dxp-system \
+  --from-literal=ARGOCD_TOKEN="$ARGOCD_API_TOKEN" \
+  --from-literal=HARBOR_API_TOKEN="$HARBOR_API_TOKEN" \
+  --from-literal=GRAFANA_API_TOKEN="$GRAFANA_API_TOKEN" \
+  --from-literal=LITELLM_API_KEY="$LITELLM_API_KEY" \
+  --from-literal=LITELLM_API_BASE="$LITELLM_API_BASE" \
+  --from-literal=LITELLM_MODEL="$LITELLM_MODEL" \
+  --from-literal=GITHUB_TOKEN="$GITHUB_TOKEN" \
+  --dry-run=client -o yaml | kubectl apply -f - &>/dev/null
 
 sed -i "s|ARGOCD_API_TOKEN=.*|ARGOCD_API_TOKEN=$ARGOCD_API_TOKEN|" \
   ~/dxp-platform/infrastructure/scripts/.env
