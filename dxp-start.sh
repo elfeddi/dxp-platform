@@ -92,5 +92,24 @@ else
   warn "dxp-serve not ready — verifier manuellement"
 fi
 
+# Enregistrer les entites catalog Backstage
+log "Enregistrement entites Backstage catalog..."
+sleep 30
+curl -s -X POST http://localhost:7007/api/catalog/locations   -H "Content-Type: application/json"   -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"}' &>/dev/null
+curl -s -X POST http://localhost:7007/api/catalog/locations   -H "Content-Type: application/json"   -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"}' &>/dev/null
+ok "Entites Backstage enregistrees"
+
+
+# Enregistrer les entites catalog Backstage
+log "Enregistrement entites Backstage catalog..."
+sleep 30
+curl -s -X POST http://localhost:7007/api/catalog/locations \
+  -H "Content-Type: application/json" \
+  -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"}' &>/dev/null
+curl -s -X POST http://localhost:7007/api/catalog/locations \
+  -H "Content-Type: application/json" \
+  -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"}' &>/dev/null
+ok "Entites Backstage enregistrees"
+
 echo ""
 echo "DxP Platform - Demarrage OK"
