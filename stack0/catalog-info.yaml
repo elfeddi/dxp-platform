@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: dxp-serve
+  title: DxP Control Plane
+  description: C4 Gateway — Control plane de la plateforme DxP. Expose /provision, /generate, /diagnose.
+  annotations:
+    github.com/project-slug: elfeddi/dxp-platform
+    backstage.io/kubernetes-id: dxp-serve
+  tags:
+    - platform
+    - core
+    - ai-native
+spec:
+  type: service
+  lifecycle: production
+  owner: team-platform
+  system: dxp-platform
