@@ -17,9 +17,9 @@ spec:
         app: ${{ values.name }}
     spec:
       nodeSelector:
-        node-role: workload
+        role: workload
       tolerations:
-      - key: node-role
+      - key: role
         operator: Equal
         value: workload
         effect: NoSchedule
