@@ -76,6 +76,19 @@ spec:
         description: ${{ parameters.description }}
         defaultBranch: main
         repoVisibility: public
+    - id: provision
+      name: Provisionner l'environnement K8s
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /api/proxy/dxp-admin/api/dxp/provision
+        headers:
+          Content-Type: application/json
+        body:
+          name: ${{ parameters.name }}
+          repo: ${{ parameters.repoUrl }}
+          namespace: ${{ parameters.name }}-dev
+          language: ${{ parameters.language }}
     - id: register
       name: Enregistrer dans le catalogue DxP
       action: catalog:register
