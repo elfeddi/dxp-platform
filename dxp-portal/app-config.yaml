@@ -52,7 +52,8 @@ backend:
   # The production database configuration is stored in app-config.production.yaml
   database:
     client: better-sqlite3
-    connection: ':memory:'
+    connection:
+      directory: /home/azureuser/dxp-platform/dxp-portal/.backstage-db
   # see https://backstage.io/docs/ai/mcp-actions#actions-configuration for more details
   actions:
     pluginSources:
@@ -121,39 +122,14 @@ catalog:
   rules:
     - allow: [Component, System, API, Resource, Location, Template]
   locations:
-    # Local example data, file locations are relative to the backend process, typically `packages/backend`
     - type: url
       target: https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml
       rules:
         - allow: [Template]
-
-
-    # Local example template
-    - type: file
-      target: ../../../../templates/golden-path-devops/template.yaml
-      rules:
-        - allow: [Template]
-
-    # DxP serve — Control Plane
-    - type: file
-      target: ../../../../stack0/catalog-info.yaml
+    - type: url
+      target: https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml
       rules:
         - allow: [Component]
-    # Local example organizational data
-    - type: file
-      target: ../../examples/org.yaml
-      rules:
-        - allow: [User, Group]
-
-    ## Uncomment these lines to add more example data
-    # - type: url
-    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
-
-    ## Uncomment these lines to add an example org
-    # - type: url
-    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml
-    #   rules:
-    #     - allow: [User, Group]
 
 kubernetes:
   serviceLocatorMethod:
