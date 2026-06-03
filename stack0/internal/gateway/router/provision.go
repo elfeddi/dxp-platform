@@ -140,7 +140,7 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 		Action: "create-app",
 		Target: req.Name,
 		Params: map[string]string{
-			"repo":      req.Repo,
+			"repo":      "https://github.com/" + req.Repo,
 			"namespace": req.Namespace,
 			"path":      "k8s",
 		},
