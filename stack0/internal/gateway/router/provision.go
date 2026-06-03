@@ -75,6 +75,19 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Étape 0 — Créer le repo GitHub
+	githubToken2 := os.Getenv("GITHUB_TOKEN")
+	if githubToken2 != "" {
+		owner, repoName2, parseErr2 := parseGitHubRepo(req.Repo)
+		if parseErr2 == nil {
+			if err := createGitHubRepo(githubToken2, owner, repoName2); err != nil {
+				result.Steps["repo"] = fmt.Sprintf("error: %v", err)
+			} else {
+				result.Steps["repo"] = "created"
+			}
+		}
+	}
+
 	// Étape 1 — Namespace K8s
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -117,7 +130,7 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		result.Steps["argocd_app"] = fmt.Sprintf("error: %v", err)
 	} else if !actionResult.Success {
-		result.Steps["argocd_app"] = fmt.Sprintf("error: %s", actionResult.Message)
+		result.Steps["argocd_app"] = fmt.Sprintf("pending: %s", actionResult.Message)
 	} else {
 		result.Steps["argocd_app"] = "created"
 	}
@@ -205,6 +218,36 @@ func createGitHubWebhook(token, owner, repo, webhookURL string) error {
 	}
 	defer resp.Body.Close()
 	// 201 = créé, 422 = déjà existant → les deux sont ok
+	if resp.StatusCode == 201 || resp.StatusCode == 422 {
+		return nil
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("github api %d: %s", resp.StatusCode, string(body))
+}
+
+func createGitHubRepo(token, owner, repoName string) error {
+	apiURL := "https://api.github.com/user/repos"
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name":        repoName,
+		"private":     false,
+		"auto_init":   false,
+		"description": "Created by DxP",
+	})
+	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// 201 = créé, 422 = déjà existant → ok
 	if resp.StatusCode == 201 || resp.StatusCode == 422 {
 		return nil
 	}
