@@ -81,7 +81,8 @@ spec:
       action: http:backstage:request
       input:
         method: POST
-        path: /api/proxy/dxp-admin/api/dxp/provision
+        path: /proxy/dxp-admin/api/dxp/provision
+        baseUrl: http://localhost:7007
         headers:
           Content-Type: application/json
         body:
