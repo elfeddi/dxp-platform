@@ -17,6 +17,9 @@ if ! kubectl get configmap coredns -n kube-system -o yaml | grep -q "harbor.dxp"
   kubectl patch configmap coredns -n kube-system --type merge -p '{"data":{"Corefile":".:53 {\n    errors\n    health\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n      pods insecure\n      fallthrough in-addr.arpa ip6.arpa\n    }\n    rewrite name harbor.dxp harbor.harbor.svc.cluster.local\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n  }"}}'
   kubectl rollout restart deployment coredns -n kube-system
   kubectl rollout status deployment coredns -n kube-system --timeout=60s
+  sleep 10
+  kubectl rollout restart deployment -n tekton-pipelines 2>/dev/null || true
+  sleep 5
 fi
 ok "CoreDNS harbor.dxp configure"
 
