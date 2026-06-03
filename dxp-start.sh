@@ -78,6 +78,7 @@ sed -i "s|ARGOCD_API_TOKEN=.*|ARGOCD_API_TOKEN=$ARGOCD_API_TOKEN|" \
 
 ok "Token ArgoCD regenere"
 
+kubectl apply -f ~/dxp-platform/infrastructure/configs/dxp-rbac.yaml &>/dev/null && ok "RBAC dxp-provisioner appliqué"
 log "Redemarrage dxp-serve..."
 kubectl rollout restart deployment dxp-serve -n dxp-system &>/dev/null
 kubectl rollout status deployment dxp-serve -n dxp-system --timeout=60s
