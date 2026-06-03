@@ -103,11 +103,15 @@ ok "Entites Backstage enregistrees"
 # Enregistrer les entites catalog Backstage
 log "Enregistrement entites Backstage catalog..."
 sleep 30
+BST_TOKEN=$(curl -s -X POST http://localhost:7007/api/auth/guest/refresh \
+  -H "Content-Type: application/json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get(\'backstageIdentity\',{}).get(\'token\',[\'\'[0]))" 2>/dev/null)
 curl -s -X POST http://localhost:7007/api/catalog/locations \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $BST_TOKEN" \
   -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"}' &>/dev/null
 curl -s -X POST http://localhost:7007/api/catalog/locations \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $BST_TOKEN" \
   -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"}' &>/dev/null
 ok "Entites Backstage enregistrees"
 
