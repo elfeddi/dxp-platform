@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elfeddi/dxp/internal/gateway"
 	"github.com/elfeddi/dxp/internal/gateway/middleware"
 	"github.com/elfeddi/dxp/internal/gateway/rbac"
 	corev1 "k8s.io/api/core/v1"
@@ -103,57 +102,6 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result.Steps["namespace"] = "created"
-
-	// Étape 2 — Attendre que le repo GitHub soit accessible (max 15s)
-	repoOwner, repoName3, _ := parseGitHubRepo(req.Repo)
-	repoURL := fmt.Sprintf("https://api.github.com/repos/%s/%s", repoOwner, repoName3)
-	for i := 0; i < 5; i++ {
-		repoReq, _ := http.NewRequest("GET", repoURL, nil)
-		repoReq.Header.Set("Authorization", "Bearer "+githubToken2)
-		repoReq.Header.Set("Accept", "application/vnd.github+json")
-		repoClient := &http.Client{Timeout: 5 * time.Second}
-		repoResp, repoErr := repoClient.Do(repoReq)
-		if repoErr == nil && repoResp.StatusCode == 200 {
-			repoResp.Body.Close()
-			break
-		}
-		if repoResp != nil {
-			repoResp.Body.Close()
-		}
-		time.Sleep(3 * time.Second)
-	}
-	time.Sleep(2 * time.Second)
-
-	// Étape 2 — Application ArgoCD via backend C4
-	argoBackend, err := s.registry.Get("argocd-main")
-	if err != nil {
-		argoBackend, err = s.registry.Get("argocd")
-	}
-	if err != nil {
-		result.Steps["argocd_app"] = "error: argocd backend not found"
-		result.Error = "argocd backend not found"
-		writeJSON(w, http.StatusInternalServerError, result)
-		return
-	}
-
-	actionReq := &gateway.ActionRequest{
-		Action: "create-app",
-		Target: req.Name,
-		Params: map[string]string{
-			"repo":      "https://github.com/" + req.Repo,
-			"namespace": req.Namespace,
-			"path":      "k8s",
-		},
-	}
-
-	actionResult, err := argoBackend.ExecuteAction(r.Context(), actionReq)
-	if err != nil {
-		result.Steps["argocd_app"] = fmt.Sprintf("error: %v", err)
-	} else if !actionResult.Success {
-		result.Steps["argocd_app"] = fmt.Sprintf("pending: %s", actionResult.Message)
-	} else {
-		result.Steps["argocd_app"] = "created"
-	}
 
 	// Étape 3 — Webhook (backlog)
 	githubToken := os.Getenv("GITHUB_TOKEN")
