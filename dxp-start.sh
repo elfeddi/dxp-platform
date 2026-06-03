@@ -23,6 +23,15 @@ if ! kubectl get configmap coredns -n kube-system -o yaml | grep -q "harbor.dxp"
 fi
 ok "CoreDNS harbor.dxp configure"
 
+# Config registre insecure harbor.dxp sur les Workers
+log "Configuration registre Harbor sur les Workers..."
+HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+if [ -n "$HARBOR_IP" ]; then
+  for WORKER_IP in 10.0.0.5 10.0.0.6; do
+    ssh -i ~/.ssh/dxp-key.pem -o StrictHostKeyChecking=no azureuser@$WORKER_IP       "sudo mkdir -p /etc/rancher/k3s && echo \"mirrors:\n  harbor.dxp:\n    endpoint:\n      - http://${HARBOR_IP}\nconfigs:\n  harbor.dxp:\n    tls:\n      insecure_skip_verify: true\" | sudo tee /etc/rancher/k3s/registries.yaml > /dev/null && sudo systemctl restart k3s-agent"       &>/dev/null && echo "[v] Registre configuré sur $WORKER_IP" || echo "[!] Erreur registre sur $WORKER_IP"
+  done
+fi
+
 log "Attente ArgoCD..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
 ok "ArgoCD pret"
