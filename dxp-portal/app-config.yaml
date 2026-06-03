@@ -52,7 +52,7 @@ backend:
   # The production database configuration is stored in app-config.production.yaml
   database:
     client: better-sqlite3
-    connection: '/home/azureuser/dxp-platform/dxp-portal/backstage.db'
+    connection: ':memory:'
   # see https://backstage.io/docs/ai/mcp-actions#actions-configuration for more details
   actions:
     pluginSources:
