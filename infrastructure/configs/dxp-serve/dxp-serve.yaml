@@ -15,7 +15,7 @@ data:
           - type: argocd
             name: argocd-main
             config:
-              url: https://ingress-nginx-controller.ingress-nginx.svc.cluster.local/argocd
+              url: https://argocd-server.argocd.svc.cluster.local
           - type: harbor
             name: harbor-main
             config:
