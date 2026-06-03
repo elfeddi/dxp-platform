@@ -86,7 +86,7 @@ spec:
           Content-Type: application/json
         body:
           name: ${{ parameters.name }}
-          repo: ${{ parameters.repoUrl }}
+          repo: https://github.com/elfeddi/${{ parameters.name }}
           namespace: ${{ parameters.name }}-dev
           language: ${{ parameters.language }}
     - id: register
