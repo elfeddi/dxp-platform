@@ -214,6 +214,7 @@ func (b *Backend) createApp(ctx context.Context, req *gateway.ActionRequest) (*g
 					"prune":    true,
 					"selfHeal": true,
 				},
+				"syncOptions": []string{"CreateNamespace=true"},
 			},
 		},
 	}
@@ -223,7 +224,7 @@ func (b *Backend) createApp(ctx context.Context, req *gateway.ActionRequest) (*g
 		return &gateway.ActionResult{Success: false, Message: err.Error()}, nil
 	}
 
-	resp, err := b.post(ctx, "/api/v1/applications", bytes.NewReader(bodyBytes))
+	resp, err := b.post(ctx, "/api/v1/applications?validate=false", bytes.NewReader(bodyBytes))
 	if err != nil {
 		return &gateway.ActionResult{Success: false, Message: err.Error()}, nil
 	}
