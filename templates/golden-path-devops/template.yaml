@@ -82,7 +82,6 @@ spec:
       input:
         method: POST
         path: /proxy/dxp-admin/api/dxp/provision
-        baseUrl: http://localhost:7007
         headers:
           Content-Type: application/json
         body:
