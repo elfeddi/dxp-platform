@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: dxp-serve
-          image: harbor.dxp/dxp/dxp-serve:4a3452b
+          image: harbor.dxp/dxp/dxp-serve:5832c85
           imagePullPolicy: Never
           args: ["serve", "--config", "/config/dxp.yaml", "--addr", ":8090"]
           ports:
