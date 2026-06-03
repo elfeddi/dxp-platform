@@ -27,6 +27,7 @@ spec:
       containers:
       - name: ${{ values.name }}
         image: harbor.dxp/dxp/${{ values.name }}:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
         resources:
