@@ -1,28 +1,29 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: dxp-golden-path-go
-  title: DxP Golden Path — Service Go
-  description: Crée un service Go avec pipeline CI/CD complet — build, push Harbor, déploiement ArgoCD
+  name: dxp-golden-path-dataops-dbt
+  title: DxP Golden Path — Modèle dbt
+  description: Crée un projet dbt avec modèles SQL, tests de qualité et documentation auto-générée
   tags:
-    - devops
-    - go
-    - kubernetes
-    - discipline:devops
+    - dataops
+    - dbt
+    - sql
+    - transformation
+    - discipline:dataops
 spec:
   owner: user:guest
-  type: service
+  type: pipeline
   parameters:
-    - title: Informations du service
+    - title: Informations du modèle
       required:
         - name
         - description
         - owner
       properties:
         name:
-          title: Nom du service
+          title: Nom du projet dbt
           type: string
-          pattern: '^[a-z][a-z0-9-]*$'
+          pattern: '^[a-z][a-z0-9_]*$'
           ui:autofocus: true
         description:
           title: Description
@@ -30,7 +31,7 @@ spec:
         owner:
           title: Équipe propriétaire
           type: string
-          default: team-platform
+          default: team-data
     - title: Dépôt GitHub
       required:
         - repoUrl
@@ -61,19 +62,6 @@ spec:
         defaultBranch: main
         repoVisibility: public
         protectDefaultBranch: false
-    - id: provision
-      name: Provisionner K8s
-      action: http:backstage:request
-      input:
-        method: POST
-        path: /proxy/dxp-admin/api/dxp/provision
-        headers:
-          Content-Type: application/json
-        body:
-          name: ${{ parameters.name }}
-          repo: https://github.com/elfeddi/${{ parameters.name }}
-          namespace: ${{ parameters.name }}-dev
-          language: go
     - id: register
       name: Enregistrer dans le catalogue
       action: catalog:register

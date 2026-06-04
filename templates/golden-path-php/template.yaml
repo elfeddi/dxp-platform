@@ -9,6 +9,7 @@ metadata:
     - php
     - apache
     - kubernetes
+    - discipline:devops
 spec:
   owner: user:guest
   type: service

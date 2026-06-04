@@ -7,6 +7,7 @@ metadata:
   tags:
     - devops
     - kubernetes
+    - discipline:devops
     - recommended
 spec:
   owner: user:guest

@@ -9,6 +9,7 @@ metadata:
     - python
     - fastapi
     - kubernetes
+    - discipline:devops
 spec:
   owner: user:guest
   type: service

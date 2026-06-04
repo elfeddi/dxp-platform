@@ -1,0 +1,10 @@
+name: '${{ values.name }}'
+version: '1.0.0'
+config-version: 2
+profile: '${{ values.name }}'
+model-paths: ["models"]
+test-paths: ["tests"]
+docs-paths: ["docs"]
+models:
+  ${{ values.name }}:
+    materialized: table

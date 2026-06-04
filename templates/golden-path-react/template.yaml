@@ -9,6 +9,7 @@ metadata:
     - react
     - frontend
     - kubernetes
+    - discipline:devops
 spec:
   owner: user:guest
   type: website

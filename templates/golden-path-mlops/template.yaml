@@ -1,26 +1,27 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: dxp-golden-path-go
-  title: DxP Golden Path — Service Go
-  description: Crée un service Go avec pipeline CI/CD complet — build, push Harbor, déploiement ArgoCD
+  name: dxp-golden-path-mlops
+  title: DxP Golden Path — Expérience MLflow
+  description: Crée un projet ML avec tracking MLflow, versioning modèle et serving KServe via DxP MLOps
   tags:
-    - devops
-    - go
+    - mlops
+    - mlflow
+    - python
     - kubernetes
-    - discipline:devops
+    - discipline:mlops
 spec:
   owner: user:guest
-  type: service
+  type: model
   parameters:
-    - title: Informations du service
+    - title: Informations du modèle
       required:
         - name
         - description
         - owner
       properties:
         name:
-          title: Nom du service
+          title: Nom du projet ML
           type: string
           pattern: '^[a-z][a-z0-9-]*$'
           ui:autofocus: true
@@ -30,7 +31,7 @@ spec:
         owner:
           title: Équipe propriétaire
           type: string
-          default: team-platform
+          default: team-ml
     - title: Dépôt GitHub
       required:
         - repoUrl
@@ -61,19 +62,6 @@ spec:
         defaultBranch: main
         repoVisibility: public
         protectDefaultBranch: false
-    - id: provision
-      name: Provisionner K8s
-      action: http:backstage:request
-      input:
-        method: POST
-        path: /proxy/dxp-admin/api/dxp/provision
-        headers:
-          Content-Type: application/json
-        body:
-          name: ${{ parameters.name }}
-          repo: https://github.com/elfeddi/${{ parameters.name }}
-          namespace: ${{ parameters.name }}-dev
-          language: go
     - id: register
       name: Enregistrer dans le catalogue
       action: catalog:register
