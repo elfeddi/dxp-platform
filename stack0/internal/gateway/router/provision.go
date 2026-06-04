@@ -75,19 +75,6 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Étape 0 — Créer le repo GitHub
-	githubToken2 := os.Getenv("GITHUB_TOKEN")
-	if githubToken2 != "" {
-		owner, repoName2, parseErr2 := parseGitHubRepo(req.Repo)
-		if parseErr2 == nil {
-			if err := createGitHubRepo(githubToken2, owner, repoName2); err != nil {
-				result.Steps["repo"] = fmt.Sprintf("error: %v", err)
-			} else {
-				result.Steps["repo"] = "created"
-			}
-		}
-	}
-
 	// Étape 1 — Namespace K8s
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
