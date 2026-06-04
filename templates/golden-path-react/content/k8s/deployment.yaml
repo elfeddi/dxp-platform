@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${{ values.name }}
+  namespace: ${{ values.name }}-dev
+  labels:
+    app: ${{ values.name }}
+    dxp.io/managed: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${{ values.name }}
+  template:
+    metadata:
+      labels:
+        app: ${{ values.name }}
+        backstage.io/kubernetes-id: ${{ values.name }}
+    spec:
+      nodeSelector:
+        role: workload
+      tolerations:
+      - key: role
+        operator: Equal
+        value: workload
+        effect: NoSchedule
+      containers:
+      - name: ${{ values.name }}
+        image: harbor.dxp/dxp/${{ values.name }}:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${{ values.name }}
+  namespace: ${{ values.name }}-dev
+spec:
+  selector:
+    app: ${{ values.name }}
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/source-location: url:https://github.com/elfeddi/${{ values.name }}
+    argocd/app-name: ${{ values.name }}
+    tekton.dev/cicd: "true"
+spec:
+  type: website
+  lifecycle: development
+  owner: ${{ values.owner }}
