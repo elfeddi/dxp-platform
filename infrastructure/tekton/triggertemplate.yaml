@@ -1,26 +1,24 @@
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"triggers.tekton.dev/v1beta1","kind":"TriggerTemplate","metadata":{"annotations":{},"name":"dxp-demo-template","namespace":"tekton-pipelines"},"spec":{"params":[{"name":"git-url"},{"name":"git-revision"},{"name":"image"}],"resourcetemplates":[{"apiVersion":"tekton.dev/v1","kind":"PipelineRun","metadata":{"generateName":"dxp-demo-run-","namespace":"tekton-pipelines"},"spec":{"params":[{"name":"git-url","value":"$(tt.params.git-url)"},{"name":"git-revision","value":"$(tt.params.git-revision)"},{"name":"image","value":"$(tt.params.image)"}],"pipelineRef":{"name":"dxp-demo-pipeline"},"workspaces":[{"name":"source","volumeClaimTemplate":{"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"1Gi"}}}}}]}}]}}
-  creationTimestamp: "2026-06-01T15:25:38Z"
-  generation: 1
   name: dxp-demo-template
   namespace: tekton-pipelines
-  resourceVersion: "810628"
-  uid: 629f23d1-9874-457a-88ea-b5fafb74a3d9
 spec:
   params:
   - name: git-url
   - name: git-revision
   - name: image
+  - name: app-name
+  - name: namespace
   resourcetemplates:
   - apiVersion: tekton.dev/v1
     kind: PipelineRun
     metadata:
       generateName: dxp-demo-run-
       namespace: tekton-pipelines
+      labels:
+        backstage.io/kubernetes-id: $(tt.params.app-name)
+        dxp.io/managed: "true"
     spec:
       params:
       - name: git-url
@@ -29,8 +27,12 @@ spec:
         value: $(tt.params.git-revision)
       - name: image
         value: $(tt.params.image)
+      - name: app-name
+        value: $(tt.params.app-name)
+      - name: namespace
+        value: $(tt.params.namespace)
       pipelineRef:
-        name: dxp-demo-pipeline
+        name: dxp-app-pipeline
       workspaces:
       - name: source
         volumeClaimTemplate:

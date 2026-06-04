@@ -1,15 +1,8 @@
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"triggers.tekton.dev/v1beta1","kind":"TriggerBinding","metadata":{"annotations":{},"creationTimestamp":"2026-06-01T15:25:38Z","generation":1,"name":"dxp-demo-binding","namespace":"tekton-pipelines","resourceVersion":"810627","uid":"759ade62-5344-4431-b999-383f972a4f08"},"spec":{"params":[{"name":"git-url","value":"$(body.repository.clone_url)"},{"name":"git-revision","value":"$(body.after)"},{"name":"image","value":"harbor.dxp/dxp/dxp-demo"}]}}
-  creationTimestamp: "2026-06-02T20:52:09Z"
-  generation: 2
   name: dxp-demo-binding
   namespace: tekton-pipelines
-  resourceVersion: "341048"
-  uid: e525ebf0-5618-478f-ba97-362cfd79fc4d
 spec:
   params:
   - name: git-url
@@ -18,3 +11,7 @@ spec:
     value: $(body.after)
   - name: image
     value: harbor.dxp/dxp/$(body.repository.name)
+  - name: app-name
+    value: $(body.repository.name)
+  - name: namespace
+    value: $(body.repository.name)-dev
