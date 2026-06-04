@@ -68,14 +68,7 @@ spec:
           description: ${{ parameters.description }}
           owner: ${{ parameters.owner }}
           language: ${{ parameters.language }}
-    - id: publish
-      name: Créer le dépôt et pousser le code
-      action: publish:github
-      input:
-        repoUrl: ${{ parameters.repoUrl }}
-        description: ${{ parameters.description }}
-        defaultBranch: main
-        repoVisibility: public
+
     - id: provision
       name: Provisionner l'environnement K8s
       action: http:backstage:request
@@ -89,12 +82,23 @@ spec:
           repo: https://github.com/elfeddi/${{ parameters.name }}
           namespace: ${{ parameters.name }}-dev
           language: ${{ parameters.language }}
+
+    - id: publish
+      name: Pousser le code dans le dépôt
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: public
+
     - id: register
       name: Enregistrer dans le catalogue DxP
       action: catalog:register
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
+
   output:
     links:
       - title: Voir le dépôt GitHub
