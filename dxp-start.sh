@@ -25,13 +25,26 @@ ok "CoreDNS harbor.dxp configure"
 
 # Config registre insecure harbor.dxp sur les Workers
 log "Configuration registre Harbor sur les Workers..."
-HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-if [ -n "$HARBOR_IP" ]; then
-  for WORKER_IP in 10.0.0.5 10.0.0.6; do
-    ssh -i ~/.ssh/dxp-key.pem -o StrictHostKeyChecking=no azureuser@$WORKER_IP       "sudo mkdir -p /etc/rancher/k3s && echo \"mirrors:\n  harbor.dxp:\n    endpoint:\n      - http://${HARBOR_IP}\nconfigs:\n  harbor.dxp:\n    tls:\n      insecure_skip_verify: true\" | sudo tee /etc/rancher/k3s/registries.yaml > /dev/null && sudo systemctl restart k3s-agent"       &>/dev/null && echo "[v] Registre configuré sur $WORKER_IP" || echo "[!] Erreur registre sur $WORKER_IP"
-  done
-fi
-
+for WORKER_IP in 10.0.0.5 10.0.0.6; do
+  ssh -i ~/.ssh/dxp-key.pem -o StrictHostKeyChecking=no azureuser@$WORKER_IP \
+    "sudo mkdir -p /etc/rancher/k3s
+     grep -q 'harbor.dxp' /etc/hosts || echo '10.0.0.4 harbor.dxp' | sudo tee -a /etc/hosts
+     sudo tee /etc/rancher/k3s/registries.yaml << 'YAML'
+mirrors:
+  harbor.dxp:
+    endpoint:
+      - \"http://10.0.0.4:30091\"
+configs:
+  harbor.dxp:
+    auth:
+      username: admin
+      password: dxp-Harbor2026
+    tls:
+      insecure_skip_verify: true
+YAML
+     sudo systemctl restart k3s-agent" \
+    &>/dev/null && echo "[v] Registre configuré sur $WORKER_IP" || echo "[!] Erreur registre sur $WORKER_IP"
+done
 log "Attente ArgoCD..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
 ok "ArgoCD pret"
@@ -84,20 +97,6 @@ kubectl rollout restart deployment dxp-serve -n dxp-system &>/dev/null
 kubectl rollout status deployment dxp-serve -n dxp-system --timeout=60s
 ok "dxp-serve redemarre"
 
-# Sync image dxp-serve sur dxp-agent-1
-log "Sync image dxp-serve sur dxp-agent-1..."
-MASTER_SHA=$(sudo k3s ctr images ls | grep "harbor.dxp/dxp/dxp-serve:latest" | awk '{print $4}')
-AGENT_SHA=$(ssh -i ~/.ssh/dxp-key.pem -o StrictHostKeyChecking=no azureuser@10.0.0.5 \
-  "sudo k3s ctr images ls 2>/dev/null | grep 'harbor.dxp/dxp/dxp-serve:latest'" | awk '{print $4}')
-if [ "$MASTER_SHA" != "$AGENT_SHA" ]; then
-  warn "Image desynchronisee — sync en cours..."
-  sudo k3s ctr images export /tmp/dxp-serve-latest.tar harbor.dxp/dxp/dxp-serve:latest
-  scp -i ~/.ssh/dxp-key.pem /tmp/dxp-serve-latest.tar azureuser@10.0.0.5:/tmp/
-  ssh -i ~/.ssh/dxp-key.pem azureuser@10.0.0.5 \
-    "sudo k3s ctr images import /tmp/dxp-serve-latest.tar"
-  ok "Image dxp-serve synchronisee sur agent-1"
-else
-  ok "Image dxp-serve a jour sur agent-1"
 fi
 
 log "Verification dxp-serve..."
