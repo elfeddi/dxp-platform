@@ -1,0 +1,96 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: dxp-golden-path-python
+  title: DxP Golden Path — Service Python
+  description: Crée un service Python (FastAPI) avec pipeline CI/CD complet — build, push Harbor, déploiement ArgoCD
+  tags:
+    - devops
+    - python
+    - fastapi
+    - kubernetes
+spec:
+  owner: user:guest
+  type: service
+  parameters:
+    - title: Informations du service
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Nom du service
+          type: string
+          description: Nom unique du service (ex. mon-api, data-service)
+          pattern: '^[a-z][a-z0-9-]*$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: Description courte du service
+        owner:
+          title: Équipe propriétaire
+          type: string
+          description: Équipe responsable du service
+          default: team-data
+    - title: Dépôt GitHub
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Dépôt GitHub
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+  steps:
+    - id: fetch-base
+      name: Générer le squelette du service
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+
+    - id: publish
+      name: Créer le dépôt et pousser le code
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: public
+        protectDefaultBranch: false
+
+    - id: provision
+      name: Provisionner l'environnement K8s
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /proxy/dxp-admin/api/dxp/provision
+        headers:
+          Content-Type: application/json
+        body:
+          name: ${{ parameters.name }}
+          repo: https://github.com/elfeddi/${{ parameters.name }}
+          namespace: ${{ parameters.name }}-dev
+          language: python
+
+    - id: register
+      name: Enregistrer dans le catalogue DxP
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Voir le dépôt GitHub
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Ouvrir dans le catalogue DxP
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
