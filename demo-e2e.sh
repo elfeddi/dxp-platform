@@ -10,8 +10,8 @@ GITHUB_TOKEN="${GITHUB_TOKEN:-$(grep GITHUB_TOKEN ~/dxp-platform/infrastructure/
 DXP_IP="158.158.8.131"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
-ok()      { echo -e "${GREEN}[✓]${NC} $1"; }
-step()    { echo -e "\n${CYAN}══ $1 ══${NC}"; }
+ok()         { echo -e "${GREEN}[✓]${NC} $1"; }
+step()       { echo -e "\n${CYAN}══ $1 ══${NC}"; }
 wait_input() { echo -e "${YELLOW}[→]${NC} $1 — appuie sur Entrée pour continuer..."; read; }
 
 # ── SCÉNARIO LT ────────────────────────────────────
@@ -20,7 +20,8 @@ step "SCÉNARIO LEAD TECH — Provisionner un nouveau service"
 echo "Service : $SERVICE"
 echo "Le LT va :"
 echo "  1. Créer le repo GitHub via Backstage Golden Path"
-echo "  2. Appeler /provision → namespace K8s + ArgoCD + webhook Tekton"
+echo "  2. Appeler /provision → namespace K8s + webhook Tekton"
+echo "  (ArgoCD sera créé par Tekton après le premier build)"
 echo ""
 
 wait_input "Ouvre Backstage sur http://localhost:7007 (SSH tunnel requis)"
@@ -34,7 +35,7 @@ RESULT=$(curl -s -X POST http://localhost:30890/api/dxp/provision \
   -H "Content-Type: application/json" \
   -d "{
     \"name\": \"$SERVICE\",
-    \"repo\": \"$GITHUB_USER/$SERVICE\",
+    \"repo\": \"https://github.com/$GITHUB_USER/$SERVICE\",
     \"namespace\": \"$SERVICE-dev\",
     \"language\": \"nodejs\"
   }")
@@ -48,16 +49,13 @@ else
   echo "Namespace non créé — vérifier les logs dxp-serve"
 fi
 
-# Vérifier ArgoCD app
-sleep 3
-ARGOCD_APP=$(kubectl get application -n argocd "$SERVICE" 2>/dev/null | grep -c "$SERVICE" || echo "0")
-if [ "$ARGOCD_APP" -gt "0" ]; then
-  ok "Application ArgoCD $SERVICE créée"
-else
-  echo "Application ArgoCD non trouvée — vérifier ArgoCD"
-fi
+# Vérifier webhook GitHub
+WEBHOOK_STATUS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('steps',{}).get('webhook','?'))" 2>/dev/null)
+BRANCH_STATUS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('steps',{}).get('branch_protection','?'))" 2>/dev/null)
+ok "Webhook Tekton : $WEBHOOK_STATUS"
+ok "Protection branche : $BRANCH_STATUS"
 
-ok "Scénario LT terminé"
+ok "Scénario LT terminé — ArgoCD sera créé par Tekton après le premier build"
 echo ""
 
 # ── SCÉNARIO SE ────────────────────────────────────
@@ -100,9 +98,10 @@ step "Surveillance pipeline Tekton"
 echo "Attente du PipelineRun..."
 sleep 5
 
+RUN=""
 for i in $(seq 1 30); do
   RUN=$(kubectl get pipelineruns -n tekton-pipelines --no-headers 2>/dev/null | \
-    grep -v "False" | grep "Running\|Succeeded" | tail -1 | awk '{print $1}')
+    grep "$SERVICE" | grep "Running\|Succeeded" | tail -1 | awk '{print $1}')
   if [ -n "$RUN" ]; then
     echo "PipelineRun : $RUN"
     break
@@ -110,12 +109,23 @@ for i in $(seq 1 30); do
   sleep 3
 done
 
-# Attendre Succeeded
-echo "Attente Succeeded..."
-kubectl wait pipelinerun/$RUN -n tekton-pipelines \
-  --for=condition=Succeeded --timeout=300s 2>/dev/null && \
-  ok "Pipeline Succeeded — image buildée et pushée dans Harbor" || \
-  echo "Timeout — vérifier manuellement"
+if [ -z "$RUN" ]; then
+  echo "Aucun PipelineRun trouvé pour $SERVICE — vérifier le webhook"
+else
+  echo "Attente Succeeded..."
+  kubectl wait pipelinerun/$RUN -n tekton-pipelines \
+    --for=condition=Succeeded --timeout=300s 2>/dev/null && \
+    ok "Pipeline Succeeded — image buildée et pushée dans Harbor" || \
+    echo "Timeout — vérifier manuellement"
+fi
+
+# Vérifier ArgoCD app (créée par Tekton task 4)
+sleep 5
+if kubectl get application -n argocd "$SERVICE" &>/dev/null; then
+  ok "Application ArgoCD $SERVICE créée par Tekton"
+else
+  echo "Application ArgoCD non trouvée — vérifier la task create-argocd-app"
+fi
 
 # Vérifier le pod
 step "Vérification déploiement"

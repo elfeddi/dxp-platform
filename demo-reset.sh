@@ -58,7 +58,6 @@ fi
 # ── DÉTECTION APPS ARGOCD DE TEST ─────────────────
 step "DÉTECTION APPS ARGOCD DE TEST"
 
-# Apps système à préserver
 SYSTEM_APPS="dxp-serve harbor argocd tekton vault kyverno cert-manager prometheus grafana loki tempo otel airflow mlflow litellm pgvector"
 
 TEST_APPS=()
@@ -78,8 +77,7 @@ done
 # ── REPOS GITHUB DE TEST ───────────────────────────
 step "DÉTECTION REPOS GITHUB DE TEST"
 
-# Repos système à préserver
-SYSTEM_REPOS="dxp-platform dxp-demo task-api svc-demo-2"
+SYSTEM_REPOS="dxp-platform dxp-demo task-api svc-demo-2 svc-p1-final svc-demo-final"
 
 TEST_REPOS=()
 if [ "$KEEP_REPOS" = false ]; then
@@ -90,7 +88,6 @@ if [ "$KEEP_REPOS" = false ]; then
     for sys in $SYSTEM_REPOS; do
       [[ "$repo" == "$sys" ]] && is_system=true && break
     done
-    # Seulement les repos créés via Golden Path DxP (svc-* ou dxp-*)
     is_dxp=false
     [[ "$repo" == svc-* || "$repo" == dxp-* ]] && is_dxp=true
     if ! $is_system && $is_dxp; then
@@ -138,7 +135,6 @@ if [ ${#TEST_NS[@]} -gt 0 ]; then
     kubectl delete namespace "$ns" --ignore-not-found &>/dev/null &
     ok "Namespace en cours de suppression : $ns"
   done
-  # Attendre que tous les namespaces soient supprimés (max 60s)
   echo "Attente finalisation des suppressions..."
   for i in $(seq 1 20); do
     PENDING=$(kubectl get namespaces --no-headers 2>/dev/null | grep Terminating | wc -l)
@@ -177,10 +173,8 @@ fi
 # ── RÉENREGISTREMENT CATALOG BACKSTAGE ─────────────
 step "RÉENREGISTREMENT CATALOG BACKSTAGE"
 
-# Vérifier que Backstage est accessible (tunnel SSH requis)
 HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$BACKSTAGE/" 2>/dev/null)
 if [ "$HTTP" = "200" ]; then
-  # Réenregistrer les entités catalog via l'API Backstage
   LOCATIONS=(
     "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"
     "https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"
@@ -201,20 +195,17 @@ fi
 # ── VÉRIFICATION FINALE ────────────────────────────
 step "VÉRIFICATION FINALE"
 
-# dxp-serve
 STATUS=$(curl -s -H "Authorization: Bearer viewer" $DXP_SERVE/api/dxp/status | \
   python3 -c "import sys,json; d=json.load(sys.stdin); print('ready' if d.get('ready') else 'not-ready')" 2>/dev/null)
 [ "$STATUS" = "ready" ] && ok "dxp-serve ready" || warn "dxp-serve non ready — vérifier dxp-system"
 
-# Pods non Running
 NOT_RUNNING=$(kubectl get pods -A --no-headers 2>/dev/null | \
   grep -v "Running\|Completed\|Evicted\|Terminating" | wc -l)
 [ "$NOT_RUNNING" -eq 0 ] && ok "Tous les pods système en Running" || \
   warn "$NOT_RUNNING pod(s) non Running — vérifier avec : kubectl get pods -A | grep -v Running"
 
-# Namespaces restants
 REMAINING=$(kubectl get namespaces --no-headers 2>/dev/null | \
-  grep -vE "^(default|kube-system|kube-public|kube-node-lease|argocd|harbor|tekton-pipelines|monitoring|vault|kyverno|cert-manager|dxp-system|dataops|mlops|llmops|ingress-nginx)" | wc -l)
+  grep -vE "^(default|kube-system|kube-public|kube-node-lease|argocd|harbor|tekton-pipelines|tekton-pipelines-resolvers|monitoring|vault|kyverno|cert-manager|dxp-system|dataops|mlops|llmops|ingress-nginx|dex)" | wc -l)
 [ "$REMAINING" -eq 0 ] && ok "Aucun namespace de test résiduel" || \
   warn "$REMAINING namespace(s) résiduel(s)"
 
