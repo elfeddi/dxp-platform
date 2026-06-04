@@ -84,6 +84,22 @@ kubectl rollout restart deployment dxp-serve -n dxp-system &>/dev/null
 kubectl rollout status deployment dxp-serve -n dxp-system --timeout=60s
 ok "dxp-serve redemarre"
 
+# Sync image dxp-serve sur dxp-agent-1
+log "Sync image dxp-serve sur dxp-agent-1..."
+MASTER_SHA=$(sudo k3s ctr images ls | grep "harbor.dxp/dxp/dxp-serve:latest" | awk '{print $4}')
+AGENT_SHA=$(ssh -i ~/.ssh/dxp-key.pem -o StrictHostKeyChecking=no azureuser@10.0.0.5 \
+  "sudo k3s ctr images ls 2>/dev/null | grep 'harbor.dxp/dxp/dxp-serve:latest'" | awk '{print $4}')
+if [ "$MASTER_SHA" != "$AGENT_SHA" ]; then
+  warn "Image desynchronisee — sync en cours..."
+  sudo k3s ctr images export /tmp/dxp-serve-latest.tar harbor.dxp/dxp/dxp-serve:latest
+  scp -i ~/.ssh/dxp-key.pem /tmp/dxp-serve-latest.tar azureuser@10.0.0.5:/tmp/
+  ssh -i ~/.ssh/dxp-key.pem azureuser@10.0.0.5 \
+    "sudo k3s ctr images import /tmp/dxp-serve-latest.tar"
+  ok "Image dxp-serve synchronisee sur agent-1"
+else
+  ok "Image dxp-serve a jour sur agent-1"
+fi
+
 log "Verification dxp-serve..."
 kubectl port-forward -n dxp-system svc/dxp-serve 18090:8090 > /tmp/pf-dxp.log 2>&1 &
 PF_PID=$!
