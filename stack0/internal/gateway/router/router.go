@@ -54,6 +54,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/dxp/diagnose", s.handleDiagnose)
 	s.mux.HandleFunc("POST /api/dxp/provision", s.handleProvision)
 	s.mux.HandleFunc("POST /api/dxp/provision/argocd", s.handleProvisionArgoCD)
+	s.mux.HandleFunc("GET /api/dxp/service/{name}", s.handleServiceOverview)
 	s.mux.HandleFunc("GET /api/dxp/metrics", s.handlePlatformMetrics)
 	s.mux.HandleFunc("GET /api/dxp/backends", s.handleListBackends)
 	s.mux.HandleFunc("GET /api/dxp/backends/{name}/status", s.handleGetStatus)
