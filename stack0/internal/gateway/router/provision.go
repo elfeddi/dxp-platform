@@ -91,7 +91,7 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 	}
 	result.Steps["namespace"] = "created"
 
-	// Étape 3 — Webhook (backlog)
+	// Étape 3 — Webhook + désactivation protection branche
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	if githubToken == "" {
 		result.Steps["webhook"] = "skipped: GITHUB_TOKEN not set"
@@ -108,6 +108,12 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 				result.Steps["webhook"] = fmt.Sprintf("error: %v", err)
 			} else {
 				result.Steps["webhook"] = "created"
+				// Désactiver la protection de branche pour que le SE puisse git push
+				if err := disableGitHubBranchProtection(githubToken, owner, repoName, "main"); err != nil {
+					result.Steps["branch_protection"] = fmt.Sprintf("warning: %v", err)
+				} else {
+					result.Steps["branch_protection"] = "disabled"
+				}
 			}
 		}
 	}
@@ -175,6 +181,29 @@ func createGitHubWebhook(token, owner, repo, webhookURL string) error {
 	defer resp.Body.Close()
 	// 201 = créé, 422 = déjà existant → les deux sont ok
 	if resp.StatusCode == 201 || resp.StatusCode == 422 {
+		return nil
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("github api %d: %s", resp.StatusCode, string(body))
+}
+
+func disableGitHubBranchProtection(token, owner, repo, branch string) error {
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/branches/%s/protection", owner, repo, branch)
+	req, err := http.NewRequest("DELETE", apiURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// 204 = supprimée, 404 = pas de protection active → les deux sont ok
+	if resp.StatusCode == 204 || resp.StatusCode == 404 {
 		return nil
 	}
 	body, _ := io.ReadAll(resp.Body)
