@@ -15,10 +15,10 @@ spec:
   - name: source
   steps:
   - name: build-push
-    image: gcr.io/kaniko-project/executor:latest
+    image: gcr.io/kaniko-project/executor@sha256:4e7a52dd1f14872430652bb3b027405b8dfd17c4538751c620ac005741ef9698
     args:
-    - --context=$(workspaces.source.path)/source/stack0
-    - --dockerfile=$(workspaces.source.path)/source/stack0/Dockerfile
+    - --context=/workspace/source/source/stack0
+    - --dockerfile=/workspace/source/source/stack0/Dockerfile
     - --destination=$(params.image):$(params.image-tag)
     - --destination=$(params.image):latest
     - --insecure
@@ -30,7 +30,7 @@ spec:
   volumes:
   - name: docker-config
     secret:
-      secretName: harbor-credentials
+      secretName: harbor-credentials-ip
       items:
       - key: .dockerconfigjson
         path: config.json
