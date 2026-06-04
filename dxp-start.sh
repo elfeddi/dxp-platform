@@ -60,82 +60,14 @@ SESSION_TOKEN=$(curl -sk -X POST http://localhost:19090/api/v1/session \
 
 if [ -z "$SESSION_TOKEN" ]; then
   kill $PF_PID 2>/dev/null
-  cat /tmp/pf-argocd.log
-  fail "Impossible de se connecter a ArgoCD"
-fi
-
-ARGOCD_API_TOKEN=$(curl -sk -X POST "http://localhost:19090/api/v1/account/admin/token" \
-  -H "Authorization: Bearer $SESSION_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"dxp-start-$(date +%s)\",\"expiresIn\":0}" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" 2>/dev/null)
-
-kill $PF_PID 2>/dev/null
-
-if [ -z "$ARGOCD_API_TOKEN" ]; then
-  fail "Impossible de generer le token ArgoCD API"
-fi
-
-source ~/dxp-platform/infrastructure/scripts/.env
-kubectl create secret generic dxp-serve-env -n dxp-system \
-  --from-literal=ARGOCD_TOKEN="$ARGOCD_API_TOKEN" \
-  --from-literal=HARBOR_API_TOKEN="$HARBOR_API_TOKEN" \
-  --from-literal=GRAFANA_API_TOKEN="$GRAFANA_API_TOKEN" \
-  --from-literal=LITELLM_API_KEY="$LITELLM_API_KEY" \
-  --from-literal=LITELLM_API_BASE="$LITELLM_API_BASE" \
-  --from-literal=LITELLM_MODEL="$LITELLM_MODEL" \
-  --from-literal=GITHUB_TOKEN="$GITHUB_TOKEN" \
-  --dry-run=client -o yaml | kubectl apply -f - &>/dev/null
-
-sed -i "s|ARGOCD_API_TOKEN=.*|ARGOCD_API_TOKEN=$ARGOCD_API_TOKEN|" \
-  ~/dxp-platform/infrastructure/scripts/.env
-
-ok "Token ArgoCD regenere"
-
-kubectl apply -f ~/dxp-platform/infrastructure/configs/dxp-rbac.yaml &>/dev/null && ok "RBAC dxp-provisioner appliqué"
-log "Redemarrage dxp-serve..."
-kubectl rollout restart deployment dxp-serve -n dxp-system &>/dev/null
-kubectl rollout status deployment dxp-serve -n dxp-system --timeout=60s
-ok "dxp-serve redemarre"
-
-fi
-
-log "Verification dxp-serve..."
-kubectl port-forward -n dxp-system svc/dxp-serve 18090:8090 > /tmp/pf-dxp.log 2>&1 &
-PF_PID=$!
-sleep 5
-
-STATUS=$(curl -s -H "Authorization: Bearer viewer" http://localhost:18090/api/dxp/status | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print('ready' if d.get('ready') else 'not ready')" 2>/dev/null)
-
-kill $PF_PID 2>/dev/null
-
-if [ "$STATUS" = "ready" ]; then
-  ok "dxp-serve ready — tous les backends operationnels"
-else
-  warn "dxp-serve not ready — verifier manuellement"
-fi
-
 # Enregistrer les entites catalog Backstage
 log "Enregistrement entites Backstage catalog..."
 sleep 30
-curl -s -X POST http://localhost:7007/api/catalog/locations   -H "Content-Type: application/json"   -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"}' &>/dev/null
-curl -s -X POST http://localhost:7007/api/catalog/locations   -H "Content-Type: application/json"   -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"}' &>/dev/null
-ok "Entites Backstage enregistrees"
+BST_TOKEN=$(curl -s -X POST http://localhost:7007/api/auth/guest/refresh   -H "Content-Type: application/json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('backstageIdentity',{}).get('token',''))" 2>/dev/null)
 
-
-# Enregistrer les entites catalog Backstage
-log "Enregistrement entites Backstage catalog..."
-sleep 30
-BST_TOKEN=$(curl -s -X POST http://localhost:7007/api/auth/guest/refresh \
-  -H "Content-Type: application/json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get(\'backstageIdentity\',{}).get(\'token\',[\'\'[0]))" 2>/dev/null)
-curl -s -X POST http://localhost:7007/api/catalog/locations \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $BST_TOKEN" \
-  -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"}' &>/dev/null
-curl -s -X POST http://localhost:7007/api/catalog/locations \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $BST_TOKEN" \
-  -d '{"type":"url","target":"https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"}' &>/dev/null
+for target in   "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml"   "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-go/template.yaml"   "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-java/template.yaml"   "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-react/template.yaml"   "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-php/template.yaml"   "https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"; do
+  curl -s -X POST http://localhost:7007/api/catalog/locations     -H "Content-Type: application/json"     -H "Authorization: Bearer $BST_TOKEN"     -d "{\"type\":\"url\",\"target\":\"$target\"}" &>/dev/null
+done
 ok "Entites Backstage enregistrees"
 
 echo ""
