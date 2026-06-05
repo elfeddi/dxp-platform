@@ -1,136 +1,114 @@
 #!/bin/bash
-# DxP — Script de démarrage
-# Session 10 — 25 mai 2026
-# Usage : ./dxp-start.sh
-set -euo pipefail
+# DxP Start — Demarrage automatique apres reboot VM
 
-GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RESET='\033[0m'
-ok()   { echo -e "${GREEN}  ✓${RESET} $1"; }
-info() { echo -e "${CYAN}  →${RESET} $1"; }
-warn() { echo -e "${YELLOW}  !${RESET} $1"; }
-header() { echo -e "\n${CYAN}══ $1 ══${RESET}"; }
+ok()   { echo "[v] $1"; }
+warn() { echo "[!] $1"; }
+fail() { echo "[x] $1"; exit 1; }
+log()  { echo "[->] $1"; }
 
-header "DxP — Démarrage"
+log "Attente cluster k3s..."
+until kubectl get nodes &>/dev/null; do sleep 3; done
+kubectl wait --for=condition=ready node --all --timeout=120s
+ok "Cluster k3s pret"
 
-# ── 1. Cluster ────────────────────────────────────────────────────
-header "1. Cluster k3d"
-k3d cluster start dxp-poc
-kubectl wait --for=condition=Ready nodes --all --timeout=90s 2>/dev/null || true
-ok "Cluster démarré — $(kubectl get nodes --no-headers | wc -l) nœuds Ready"
+log "Verification CoreDNS harbor.dxp..."
+if ! kubectl get configmap coredns -n kube-system -o yaml | grep -q "harbor.dxp"; then
+  warn "CoreDNS patch manquant - application..."
+  kubectl patch configmap coredns -n kube-system --type merge -p '{"data":{"Corefile":".:53 {\n    errors\n    health\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n      pods insecure\n      fallthrough in-addr.arpa ip6.arpa\n    }\n    rewrite name harbor.dxp harbor.harbor.svc.cluster.local\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n  }"}}'
+  kubectl rollout restart deployment coredns -n kube-system
+  kubectl rollout status deployment coredns -n kube-system --timeout=60s
+  sleep 10
+  kubectl rollout restart deployment -n tekton-pipelines 2>/dev/null || true
+  sleep 5
+fi
+ok "CoreDNS harbor.dxp configure"
 
-# ── 2. CoreDNS — rewrite harbor.dxp ──────────────────────────────
-header "2. CoreDNS"
-kubectl patch configmap coredns -n kube-system --type merge -p \
-  '{"data":{"Corefile":".:53 {\n    errors\n    health\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n      pods insecure\n      fallthrough in-addr.arpa ip6.arpa\n    }\n    rewrite name harbor.dxp harbor.harbor.svc.cluster.local\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n  }"}}'
-kubectl rollout restart deployment coredns -n kube-system > /dev/null 2>&1
-ok "CoreDNS patché — harbor.dxp résolu"
-
-# ── 3. Registries k3d (Harbor IP) ────────────────────────────────
-header "3. Harbor registries"
-HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
-info "Harbor ClusterIP : $HARBOR_IP"
-
-for node in $(k3d node list | grep dxp-poc | grep -v tools | grep -v serverlb | awk '{print $1}'); do
-  docker exec "${node}" sh -c "mkdir -p /etc/rancher/k3s && cat > /etc/rancher/k3s/registries.yaml << YAML
+log "Configuration registre Harbor sur les Workers..."
+for WORKER_IP in 10.0.0.5 10.0.0.6; do
+  ssh -i ~/.ssh/dxp-key.pem -o StrictHostKeyChecking=no azureuser@$WORKER_IP \
+    "sudo mkdir -p /etc/rancher/k3s
+     grep -q 'harbor.dxp' /etc/hosts || echo '10.0.0.4 harbor.dxp' | sudo tee -a /etc/hosts
+     sudo tee /etc/rancher/k3s/registries.yaml << 'YAML'
 mirrors:
   harbor.dxp:
     endpoint:
-      - http://${HARBOR_IP}
+      - \"http://10.0.0.4:30091\"
 configs:
   harbor.dxp:
+    auth:
+      username: admin
+      password: dxp-Harbor2026
     tls:
       insecure_skip_verify: true
-YAML" 2>/dev/null
+YAML
+     sudo systemctl restart k3s-agent" \
+    &>/dev/null && echo "[v] Registre configure sur $WORKER_IP" || echo "[!] Erreur registre sur $WORKER_IP"
 done
-ok "registries.yaml mis à jour sur tous les nœuds (dont agent-2)"
 
-# ── 4. Dex SSO — patch port ───────────────────────────────────────
-header "4. Dex SSO"
-kubectl patch svc dex -n dex --type=json -p='[
-  {"op": "replace", "path": "/spec/ports/0/port", "value": 5557},
-  {"op": "replace", "path": "/spec/ports/0/targetPort", "value": 5557}
-]' 2>/dev/null || true
-ok "Dex port patché (5557)"
+log "Attente ArgoCD..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s
+ok "ArgoCD pret"
 
-# ── 5. Ollama ─────────────────────────────────────────────────────
-header "5. Ollama"
-if systemctl is-active --quiet ollama; then
-  ok "Ollama déjà actif"
-else
-  sudo systemctl start ollama
-  sleep 2
-  ok "Ollama démarré"
-fi
-info "Modèle : $(ollama list 2>/dev/null | grep -v NAME | awk '{print $1}' | head -1 || echo 'aucun')"
+log "Regeneration token ArgoCD..."
+kubectl port-forward -n argocd svc/argocd-server 19090:80 > /tmp/pf-argocd.log 2>&1 &
+PF_PID=$!
+sleep 20
 
-# ── 6. Harbor jobservice ──────────────────────────────────────────
-header "6. Harbor"
-kubectl rollout restart deployment harbor-jobservice -n harbor > /dev/null 2>&1 || true
-ok "Harbor jobservice redémarré"
+SESSION_TOKEN=$(curl -sk -X POST http://localhost:19090/api/v1/session \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"dxp-Argocd2026"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" 2>/dev/null)
 
-# ── 6b. RBAC dxp-provisioner ─────────────────────────────────────
-header "6b. RBAC dxp-provisioner"
-kubectl apply -f ~/dxp-platform/infrastructure/configs/dxp-rbac.yaml > /dev/null 2>&1
-ok "ClusterRole dxp-provisioner appliqué"
-
-# ── 6c. Secret dxp-serve-env ─────────────────────────────────────
-header "6c. Secret dxp-serve-env"
-source ~/dxp-platform/infrastructure/scripts/.env
-kubectl create secret generic dxp-serve-env \
-  --namespace dxp-system \
-  --from-literal=ARGOCD_TOKEN="${ARGOCD_API_TOKEN}" \
-  --from-literal=ARGOCD_URL="https://ingress-nginx-controller.ingress-nginx.svc.cluster.local/argocd" \
-  --from-literal=HARBOR_API_TOKEN="${HARBOR_API_TOKEN}" \
-  --from-literal=GRAFANA_API_TOKEN="${GRAFANA_API_TOKEN}" \
-  --from-literal=LITELLM_API_KEY="${LITELLM_API_KEY}" \
-  --from-literal=LITELLM_API_BASE="http://litellm.llmops.svc.cluster.local:4000" \
-  --from-literal=LITELLM_MODEL="dxp-default" \
-  --dry-run=client -o yaml | kubectl apply -f -
-ok "Secret dxp-serve-env mis à jour avec les tokens"
-
-# ── 7. dxp-serve pod K8s ─────────────────────────────────────────
-header "7. dxp-serve"
-DXP_POD=$(kubectl get pods -n dxp-system -l app=dxp-serve --no-headers 2>/dev/null | grep Running | awk '{print $1}' | head -1)
-if [ -n "$DXP_POD" ]; then
-  ok "dxp-serve pod Running : $DXP_POD"
-  # Port-forward dxp-serve → accessible depuis la VM sur :30890
-  pkill -f "port-forward.*dxp-serve" 2>/dev/null || true
-  sleep 1
-  kubectl port-forward -n dxp-system svc/dxp-serve 30890:8090 \
-    < /dev/null > /tmp/dxp-serve-pf.log 2>&1 & disown $!
-  sleep 2
-  ok "dxp-serve port-forward actif → localhost:30890"
-else
-  warn "dxp-serve pod non Running — vérifier : kubectl get pods -n dxp-system"
-  # Tentative de redémarrage
-  kubectl rollout restart deployment dxp-serve -n dxp-system > /dev/null 2>&1 || true
-  info "Redémarrage déclenché — attendre 15s puis vérifier"
+if [ -z "$SESSION_TOKEN" ]; then
+  warn "Token ArgoCD vide - nouvelle tentative apres 20s..."
+  sleep 20
+  SESSION_TOKEN=$(curl -sk -X POST http://localhost:19090/api/v1/session \
+    -H "Content-Type: application/json" \
+    -d '{"username":"admin","password":"dxp-Argocd2026"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" 2>/dev/null)
 fi
 
-# ── 8. Taint agent-2 (idempotent) ────────────────────────────────
-header "8. agent-2"
-if kubectl get node k3d-dxp-poc-agent-2-0 > /dev/null 2>&1; then
-  kubectl taint nodes k3d-dxp-poc-agent-2-0 node-role=workload:NoSchedule --overwrite 2>/dev/null || true
-  kubectl label node k3d-dxp-poc-agent-2-0 node-role=workload environment=demo --overwrite 2>/dev/null || true
-  ok "agent-2 : taint + label workload appliqués"
+kill $PF_PID 2>/dev/null
+
+if [ -z "$SESSION_TOKEN" ]; then
+  warn "Token ArgoCD toujours vide - dxp-serve restera en ready:false"
 else
-  warn "agent-2 non trouvé — ajouter avec : k3d node create dxp-poc-agent-2 --cluster dxp-poc --role agent"
+  TOKEN_B64=$(echo -n "$SESSION_TOKEN" | base64 -w 0)
+  kubectl patch secret dxp-serve-env -n dxp-system \
+    --type='json' \
+    -p="[{\"op\":\"replace\",\"path\":\"/data/ARGOCD_TOKEN\",\"value\":\"$TOKEN_B64\"}]"
+  ok "Secret dxp-serve-env mis a jour"
+
+  log "Redemarrage dxp-serve..."
+  kubectl rollout restart deployment/dxp-serve -n dxp-system
+  kubectl rollout status deployment/dxp-serve -n dxp-system --timeout=60s
+  ok "dxp-serve redemarre"
 fi
 
-# ── 10. Résumé ────────────────────────────────────────────────────
+log "Enregistrement entites Backstage catalog..."
+sleep 30
+BST_TOKEN=$(curl -s -X POST http://localhost:7007/api/auth/guest/refresh \
+  -H "Content-Type: application/json" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('backstageIdentity',{}).get('token',''))" 2>/dev/null)
+
+for target in \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-devops/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-go/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-java/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-react/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-php/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-python/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-dataops-airflow/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-dataops-dbt/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-mlops/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/templates/golden-path-llmops/template.yaml" \
+  "https://github.com/elfeddi/dxp-platform/blob/main/stack0/catalog-info.yaml"; do
+  curl -s -X POST http://localhost:7007/api/catalog/locations \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BST_TOKEN" \
+    -d "{\"type\":\"url\",\"target\":\"$target\"}" &>/dev/null
+done
+ok "Entites Backstage enregistrees"
+
 echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════╗${RESET}"
-echo -e "${GREEN}║   DxP est prêt                               ║${RESET}"
-echo -e "${GREEN}╚══════════════════════════════════════════════╝${RESET}"
-echo ""
-echo "  Nœuds    : $(kubectl get nodes --no-headers | wc -l) (dont 1 agent-2 workload)"
-echo "  ArgoCD   : https://158.158.8.131:9443/argocd"
-echo "  Harbor   : http://158.158.8.131:9091"
-echo "  Grafana  : https://158.158.8.131:9443/grafana"
-echo "  Backstage: http://158.158.8.131:7007"
-echo "  Airflow  : http://158.158.8.131:9294"
-echo "  LiteLLM  : http://158.158.8.131:30096"
-echo ""
-echo "  dxp serve pod : kubectl get pods -n dxp-system"
-echo "  Backstage     : cd ~/dxp-platform/dxp-portal && nvm use 20 && yarn workspace backend start < /dev/null > /tmp/backstage-backend.log 2>&1 & disown \$!"
-echo ""
+ok "DxP Platform - Demarrage complet"
