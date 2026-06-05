@@ -112,3 +112,13 @@ ok "Entites Backstage enregistrees"
 
 echo ""
 ok "DxP Platform - Demarrage complet"
+
+log "Creation secret harbor-credentials-dns..."
+kubectl get secret harbor-credentials-dns -n tekton-pipelines &>/dev/null || \
+  kubectl create secret docker-registry harbor-credentials-dns \
+    --docker-server=harbor.harbor.svc.cluster.local \
+    --docker-username=admin \
+    --docker-password=dxp-Harbor2026 \
+    --docker-email=admin@dxp.io \
+    -n tekton-pipelines
+ok "Secret harbor-credentials-dns pret"
