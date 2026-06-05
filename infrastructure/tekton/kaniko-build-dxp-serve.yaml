@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kaniko-build-dxp-serve
+  namespace: tekton-pipelines
+  labels:
+    dxp.io/managed: "true"
+spec:
+  params:
+  - name: image
+    type: string
+  - name: image-tag
+    type: string
+  workspaces:
+  - name: source
+  steps:
+  - name: build-push
+    image: gcr.io/kaniko-project/executor@sha256:4e7a52dd1f14872430652bb3b027405b8dfd17c4538751c620ac005741ef9698
+    args:
+    - --context=$(workspaces.source.path)/source/stack0
+    - --dockerfile=$(workspaces.source.path)/source/stack0/Dockerfile
+    - --destination=$(params.image):$(params.image-tag)
+    - --destination=$(params.image):latest
+    - --insecure
+    - --skip-tls-verify
+    - --insecure-pull
+    volumeMounts:
+    - mountPath: /kaniko/.docker
+      name: docker-config
+  volumes:
+  - name: docker-config
+    secret:
+      secretName: harbor-credentials-ip
+      items:
+      - key: .dockerconfigjson
+        path: config.json
